@@ -1,0 +1,2592 @@
+---
+title: "TimeSeries_Part3"
+author: "Richard Gan"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+
+```{r}
+djia <- quantmod::getSymbols("^DJI"
+                             ,start = "2006-04-20"
+                             ,end = "2016-04-20"
+                             ,freq = "daily"
+                             ,auto.assign = F
+                             )
+```
+
+```{r}
+# Get log of everything under Close. then log of the previous log
+# approx returns, diff of the logs
+djiar <- diff(log(djia$DJI.Close))#[-1]
+```
+
+```{r}
+# In Armia we model the returns not price
+plot(djiar
+     ,main = "DJIA Returns"
+     ,type = "n"
+     ) 
+# Plot ACF and PCF to check if ARIMA is not sufficient
+# Volatility clustering, increase and keep on increasing, and vice versa
+# Data with lots of volatility clustering then ARIMA is insuficient
+# Use GARCH instead because of this volatility
+lines(djiar)
+```
+
+```{r}
+require(quantmod)
+sp500 <-  getSymbols("^GSPC"
+                     ,from = "2000-01-01"
+                     ,to = "2024-10-09"
+                     ,periodicity = "monthly"
+                     ,auto.assign = F
+                     )
+plot(sp500)
+```
+
+## Example5 - El Nino and Fish Population data
+The SOI data set measures changes in air pressure, related to sea surface temperatures in the central Pacific Ocean. The central Pacific warms every three to seven years due to the El Niño effect, which has been blamed for various global extreme weather
+events. Both series exhibit repetitive behavior, with regularly repeating cycles that are easily visible. This periodic behavior is of interest. The series show two basic oscillations types, an obvious annual cycle (hot in the summer, cold in the winter), and a slower frequency that seems to repeat about every 4 years. 
+
+```{r,eval=FALSE}
+par(mfrow = c(2,1)) # set up the graphics
+plot(soi, ylab="", xlab="", main="Southern Oscillation Index")
+plot(rec, ylab="", xlab="", main="Recruitment")
+```
+
+Example 1.6 fMRI Imaging
+A fundamental problem in classical statistics occurs when we are given a collection
+of independent series
+
+
+```{r,eval=FALSE}
+par(mfrow=c(2,1))
+ts.plot(fmri1[,2:5], col=1:4, ylab="BOLD", main="Cortex")
+ts.plot(fmri1[,6:9], col=1:4, ylab="BOLD", main="Thalamus & Cerebellum")
+```
+
+# Time Series Statistical Models
+
+The primary objective of time series analysis is to develop mathematical models that provide plausible descriptions for sample data. To provide a statistical setting for describing the character of data that seemingly fluctuate in a random fashion over time, we assume a time series can
+be defined as a collection of random variables indexed according to the order they are obtained in time. For example, we may consider a time series as a sequence of random
+variables, x1; x2; x3;... , where the random variable x1 denotes the value taken by the series at the first time point, the variable x2 denotes the value for the second
+time period, x3 denotes the value for the third time period, and so on.
+It is conventional to display a sample time series graphically by plotting the values of the random variables on the vertical axis, or ordinate, with the time scale as the abscissa. It is usually convenient to connect the values at adjacent time periods to reconstruct visually some original hypothetical continuous time series that might have produced these values as a discrete sample.
+
+## No trend
+A time series with no trend is characterized by:
+Constant mean over time
+No systematic increase or decrease in the data
+May have fluctuations around the mean, but these are not directional
+
+
+```{r}
+#set,seed(548)
+trend_add_season <- ts(seq(1,108) 
+                       +10*sin(2*pi*seq(1,108) / 12) 
+                       +rnorm(108,sd = 5)
+                      ,frequency = 12)
+plot(trend_add_season)
+```
+
+```{r}
+data("AirPassengers")
+AP <- AirPassengers
+#View(AP)
+str(AP)
+```
+
+```{r}
+ap <- as.ts(AP, frequency = 12, start = c(1949,1))
+plot(ap)
+```
+
+
+## Stationary is mean constant and variance constant 
+```{r Stationary conversion using log}
+# If ur data is not stationary you cannot use ARIMA
+ap_log <- log(ap)
+plot(ap_log)
+
+```
+
+```{r}
+decomp <- decompose(AP)
+decomp$figure
+plot(decomp)
+```
+
+
+
+
+```{r}
+plot(decomp$figure,
+     type = 'b',
+     xlab = 'Month',
+     ylab = 'Seasonality Index',
+     col = 'blue',
+     las = 2)
+
+```
+
+In this dataset currently in log form, Month 11 showing -20% downside, and Month 7 and 8 showing 20% upper side.
+
+
+```{r}
+plot(decomp)
+```
+
+Basically, the time series split into three component trend, seasonal and random.
+Forecasting
+ARIMA - Autoregressive Integrated Moving Average
+
+```{r Start of 5th Next discussion}
+library(forecast)
+model <- auto.arima(AP, trace = TRUE)
+summary(model)
+```
+
+## White Noise - White noise is a random signal with specific properties:
+Constant mean (usually zero)
+Constant variance
+No autocorrelation between its values at different times
+Each observation is independent and identically distributed
+
+
+Key characteristics:
+Completely random and unpredictable
+No pattern or trend
+Flat spectral density (equal power across all frequencies)
+
+
+```{r}
+#still has constant variance there is fanning out
+dap <- diff(ap)
+plot(dap)
+
+```
+```{r Model1 DAP}
+library(forecast)
+model <- auto.arima(AP, trace = TRUE)
+summary(model)
+dap <- diff(ap)
+plot(dap)
+model1 <- auto.arima(dap, trace = TRUE)
+summary(model1) # Model now is 201 so no need to diff dap so it is in a sense stationary
+```
+
+## Random walk
+A random walk is a time series where:
+Each step is random and independent of previous steps
+The current value is the sum of the previous value and a random shock
+Has a clear trend, but the direction is unpredictable
+
+Key characteristics:
+Non-stationary (mean and variance change over time)
+Strong dependence on past values
+Difficult to predict future values accurately
+
+```{r Random Walk}
+# History of Random Walk and code implementation
+
+```
+
+```{r ARIMA}
+# History of box and jenkins Understanding on where it come from - foundations
+#Formula for 
+```
+
+
+######################################################
+4-ARIMA ||| 17 October 2024
+
+$$ \begin{align*} &\text{AR(1) Process Overview:} \\[1em] &\text{1. Formula:} \\ &\qquad X_t = c + \phi X_{t-1} + \epsilon_t \\[1em] &\text{Where:} \\ &\quad - X_t \text{ is the observed value at time } t \\ &\quad - c \text{ is a constant term} \\ &\quad - \phi \text{ is the autoregressive parameter} \\ &\quad - \epsilon_t \text{ is white noise with mean 0 and variance } \sigma^2 \\[1em] &\text{2. Theoretical Mean (when } |\phi| < 1 \text{):} \\ &\qquad \mu = E[X_t] = \frac{c}{1-\phi} \\[1em] &\text{3. Theoretical Variance (when } |\phi| < 1 \text{):} \\ &\qquad \gamma(0) = Var(X_t) = \frac{\sigma^2}{1-\phi^2} \\[1em] &\text{4. Autocovariance Function:} \\ &\qquad \gamma(k) = \phi^k \gamma(0) = \phi^k \frac{\sigma^2}{1-\phi^2} \\[1em] &\text{5. Autocorrelation Function:} \\ &\qquad \rho(k) = \phi^k \\[1em] &\text{6. Stationarity Condition:} \\ &\qquad |\phi| < 1 \end{align*} $$
+
+
+NOTE about the Theoretical Mean: NOTE: The theoretical mean of an AR(1) process is a long-run average value that the process fluctuates around. This theoretical mean represents the expected value of the process over time, assuming stationarity. In contrast, calculating the arithmetic mean of a series involves summing all observed values and dividing by the number of observations. This empirical mean can be affected by short-term fluctuations and may not accurately represent the long-run behavior of the process, especially for shorter time series. While the empirical mean of a very long AR(1) series might approach the theoretical mean, they are conceptually different and often not exactly the same, especially for shorter series or those with strong autocorrelation.
+
+
+
+$$ \begin{align*} &\text{AR(2) Process Overview:} \\[1em] &\text{1. Formula:} \\ &\qquad X_t = c + \phi_1 X_{t-1} + \phi_2 X_{t-2} + \epsilon_t \\[1em] &\text{Where:} \\ &\quad - X_t \text{ is the observed value at time } t \\ &\quad - c \text{ is a constant term} \\ &\quad - \phi_1 \text{ and } \phi_2 \text{ are the autoregressive parameters} \\ &\quad - \epsilon_t \text{ is white noise with mean 0 and variance } \sigma^2 \\[1em] &\text{2. Theoretical Mean (when stationary):} \\ &\qquad \mu = E[X_t] = \frac{c}{1-\phi_1-\phi_2} \\[1em] &\text{3. Theoretical Variance (when stationary):} \\ &\qquad \gamma(0) = Var(X_t) = \frac{(1-\phi_2)\sigma^2}{(1+\phi_2)(1-\phi_1-\phi_2)(1+\phi_1-\phi_2)} \\[1em] &\text{4. Autocovariance Function:} \\ &\qquad \gamma(1) = \frac{\phi_1}{1-\phi_2}\gamma(0) \\ &\qquad \gamma(k) = \phi_1\gamma(k-1) + \phi_2\gamma(k-2) \text{ for } k \geq 2 \\[1em]
+
+
+
+&\text{5. Autocorrelation Function:} \\ &\qquad \rho(1) = \frac{\phi_1}{1-\phi_2} \\ &\qquad \rho(k) = \phi_1\rho(k-1) + \phi_2\rho(k-2) \text{ for } k \geq 2 \\[1em] &\text{6. Stationarity Conditions:} \\ &\qquad \phi_1 + \phi_2 < 1 \\ &\qquad \phi_2 - \phi_1 < 1 \\ &\qquad -1 < \phi_2 < 1 \end{align*} $$
+
+
+
+
+$$ \begin{align*} &\text{AR(p) Process Overview:} \\[1em] &\text{1. Formula:} \\ &\qquad X_t = c + \phi_1 X_{t-1} + \phi_2 X_{t-2} + ... + \phi_p X_{t-p} + \epsilon_t \\[1em] &\text{Where:} \\ &\quad - X_t \text{ is the observed value at time } t \\ &\quad - c \text{ is a constant term} \\ &\quad - \phi_1, \phi_2, ..., \phi_p \text{ are the autoregressive parameters} \\ &\quad - \epsilon_t \text{ is white noise with mean 0 and variance } \sigma^2 \\[1em] &\text{2. Theoretical Mean (when stationary):} \\ &\qquad \mu = E[X_t] = \frac{c}{1-\phi_1-\phi_2-...-\phi_p} \\[1em] &\text{3. Theoretical Variance:} \\ &\qquad \text{Solved using the Yule-Walker equations} \\[1em] &\text{4. Autocovariance Function:} \\ &\qquad \gamma(k) = \phi_1\gamma(k-1) + \phi_2\gamma(k-2) + ... + \phi_p\gamma(k-p) \text{ for } k > 0 \\[1em]
+
+
+
+&\text{5. Autocorrelation Function:} \\ &\qquad \rho(k) = \phi_1\rho(k-1) + \phi_2\rho(k-2) + ... + \phi_p\rho(k-p) \text{ for } k > 0 \\[1em] &\text{6. Stationarity Condition:} \\ &\qquad \text{All roots of } 1 - \phi_1z - \phi_2z^2 - ... - \phi_pz^p = 0 \text{ lie outside the unit circle} \end{align*} $$ MA(1) Model: $$ \begin{align*} &\text{MA(1) Process Overview:} \\[1em] &\text{1. Formula:} \\ &\qquad X_t = \mu + \epsilon_t + \theta \epsilon_{t-1} \\[1em] &\text{Where:} \\ &\quad - X_t \text{ is the observed value at time } t \\ &\quad - \mu \text{ is the mean of the process} \\ &\quad - \theta \text{ is the moving average parameter} \\ &\quad - \epsilon_t \text{ and } \epsilon_{t-1} \text{ are white noise terms with mean 0 and variance } \sigma^2 \\[1em]
+
+
+
+&\text{2. Theoretical Mean:} \\ &\qquad E[X_t] = \mu \\[1em] &\text{3. Theoretical Variance:} \\ &\qquad Var(X_t) = (1 + \theta^2)\sigma^2 \\[1em] &\text{4. Autocovariance Function:} \\ &\qquad \gamma(0) = (1 + \theta^2)\sigma^2 \\ &\qquad \gamma(1) = \theta\sigma^2 \\ &\qquad \gamma(k) = 0 \text{ for } k > 1 \\[1em] &\text{5. Autocorrelation Function:} \\ &\qquad \rho(0) = 1 \\ &\qquad \rho(1) = \frac{\theta}{1 + \theta^2} \\ &\qquad \rho(k) = 0 \text{ for } k > 1 \\[1em] &\text{6. Invertibility Condition:} \\ &\qquad |\theta| < 1 \end{align*} $$
+
+$$
+
+&\text{2. Theoretical Mean:} \\ &\qquad E[X_t] = \mu \\[1em] &\text{3. Theoretical Variance:} \\ &\qquad Var(X_t) = (1 + \theta^2)\sigma^2 \\[1em] &\text{4. Autocovariance Function:} \\ &\qquad \gamma(0) = (1 + \theta^2)\sigma^2 \\ &\qquad \gamma(1) = \theta\sigma^2 \\ &\qquad \gamma(k) = 0 \text{ for } k > 1 \\[1em] &\text{5. Autocorrelation Function:} \\ &\qquad \rho(0) = 1 \\ &\qquad \rho(1) = \frac{\theta}{1 + \theta^2} \\ &\qquad \rho(k) = 0 \text{ for } k > 1 \\[1em] &\text{6. Invertibility Condition:} \\ &\qquad |\theta| < 1 \end{align*} $$
+
+
+$$ \begin{align*} &\text{AR(p) Process Overview:} \\[1em] &\text{1. Formula:} \\ &\qquad X_t = c + \phi_1 X_{t-1} + \phi_2 X_{t-2} + ... + \phi_p X_{t-p} + \epsilon_t \\[1em] &\text{Where:} \\ &\quad - X_t \text{ is the observed value at time } t \\ &\quad - c \text{ is a constant term} \\ &\quad - \phi_1, \phi_2, ..., \phi_p \text{ are the autoregressive parameters} \\ &\quad - \epsilon_t \text{ is white noise with mean 0 and variance } \sigma^2 \\[1em] &\text{2. Theoretical Mean (when stationary):} \\ &\qquad \mu = E[X_t] = \frac{c}{1-\phi_1-\phi_2-...-\phi_p} \\[1em] &\text{3. Theoretical Variance:} \\ &\qquad \text{Solved using the Yule-Walker equations} \\[1em] &\text{4. Autocovariance Function:} \\ &\qquad \gamma(k) = \phi_1\gamma(k-1) + \phi_2\gamma(k-2) + ... + \phi_p\gamma(k-p) \text{ for } k > 0 \\[1em]
+
+
+
+&\text{5. Autocorrelation Function:} \\ &\qquad \rho(k) = \phi_1\rho(k-1) + \phi_2\rho(k-2) + ... + \phi_p\rho(k-p) \text{ for } k > 0 \\[1em] &\text{6. Stationarity Condition:} \\ &\qquad \text{All roots of } 1 - \phi_1z - \phi_2z^2 - ... - \phi_pz^p = 0 \text{ lie outside the unit circle} \end{align*} $$ MA(1) Model: $$ \begin{align*} &\text{MA(1) Process Overview:} \\[1em] &\text{1. Formula:} \\ &\qquad X_t = \mu + \epsilon_t + \theta \epsilon_{t-1} \\[1em] &\text{Where:} \\ &\quad - X_t \text{ is the observed value at time } t \\ &\quad - \mu \text{ is the mean of the process} \\ &\quad - \theta \text{ is the moving average parameter} \\ &\quad - \epsilon_t \text{ and } \epsilon_{t-1} \text{ are white noise terms with mean 0 and variance } \sigma^2 \\[1em]
+
+
+
+&\text{2. Theoretical Mean:} \\ &\qquad E[X_t] = \mu \\[1em] &\text{3. Theoretical Variance:} \\ &\qquad Var(X_t) = (1 + \theta^2)\sigma^2 \\[1em] &\text{4. Autocovariance Function:} \\ &\qquad \gamma(0) = (1 + \theta^2)\sigma^2 \\ &\qquad \gamma(1) = \theta\sigma^2 \\ &\qquad \gamma(k) = 0 \text{ for } k > 1 \\[1em] &\text{5. Autocorrelation Function:} \\ &\qquad \rho(0) = 1 \\ &\qquad \rho(1) = \frac{\theta}{1 + \theta^2} \\ &\qquad \rho(k) = 0 \text{ for } k > 1 \\[1em] &\text{6. Invertibility Condition:} \\ &\qquad |\theta| < 1 \end{align*} $$
+
+
+
+$$ \begin{align*} &\text{MA(1) Process Overview:} \\[1em] &\text{1. Formula:} \\ &\qquad X_t = \mu + \epsilon_t + \theta \epsilon_{t-1} \\[1em] &\text{Where:} \\ &\quad - X_t \text{ is the observed value at time } t \\ &\quad - \mu \text{ is the mean of the process} \\ &\quad - \theta \text{ is the moving average parameter} \\ &\quad - \epsilon_t \text{ and } \epsilon_{t-1} \text{ are white noise terms with mean 0 and variance } \sigma^2 \\[1em] &\text{2. Theoretical Mean:} \\ &\qquad E[X_t] = \mu \\[1em] &\text{3. Theoretical Variance:} \\ &\qquad Var(X_t) = (1 + \theta^2)\sigma^2 \\[1em] &\text{4. Autocovariance Function:} \\ &\qquad \gamma(0) = (1 + \theta^2)\sigma^2 \\ &\qquad \gamma(1) = \theta\sigma^2 \\ &\qquad \gamma(k) = 0 \text{ for } k > 1 \\[1em]
+
+
+&\text{5. Autocorrelation Function:} \\ &\qquad \rho(0) = 1 \\ &\qquad \rho(1) = \frac{\theta}{1 + \theta^2} \\ &\qquad \rho(k) = 0 \text{ for } k > 1 \\[1em] &\text{6. Invertibility Condition:} \\ &\qquad |\theta| < 1 \end{align*} $$ NOTE: Invertibility process Assuming the invertibility condition $|\theta| < 1$, we can represent this MA(1) process as an infinite AR process as follows: $$X_t = \sum_{j=0}^{\infty} (-\theta)^j X_{t-j} + \epsilon_t$$ This can be expanded as: $$ X_t = \epsilon_t - \theta X_{t-1} + \theta^2 X_{t-2} - \theta^3 X_{t-3} + \theta^4 X_{t-4} - \cdots $$
+
+
+
+$$ \begin{align*} &\text{MA(2) Process Overview:} \\[1em] &\text{1. Formula:} \\ &\qquad X_t = \epsilon_t + \theta_1 \epsilon_{t-1} + \theta_2 \epsilon_{t-2} \\[1em] &\text{Where:} \\ &\quad - X_t \text{ is the observed value at time } t \\ &\quad - \epsilon_t, \epsilon_{t-1}, \epsilon_{t-2} \text{ are white noise terms with mean 0 and variance } \sigma^2 \\ &\quad - \theta_1 \text{ and } \theta_2 \text{ are the model parameters} \\[1em] &\text{2. Theoretical Mean:} \\ &\qquad E[X_t] = E[\epsilon_t + \theta_1 \epsilon_{t-1} + \theta_2 \epsilon_{t-2}] = 0 \\[1em] &\text{3. Theoretical Variance:} \\ &\qquad Var(X_t) = (1 + \theta_1^2 + \theta_2^2)\sigma^2 \\[1em] &\text{4. Autocovariance Function:} \\ &\qquad \gamma(0) = (1 + \theta_1^2 + \theta_2^2)\sigma^2 \\ &\qquad \gamma(1) = (\theta_1 + \theta_1\theta_2)\sigma^2 \\ &\qquad \gamma(2) = \theta_2\sigma^2 \\ &\qquad \gamma(k) = 0 \text{ for } k > 2 \\[1em]
+
+
+&\text{5. Autocorrelation Function:} \\ &\qquad \rho(0) = 1 \\ &\qquad \rho(1) = \frac{\theta_1 + \theta_1\theta_2}{1 + \theta_1^2 + \theta_2^2} \\ &\qquad \rho(2) = \frac{\theta_2}{1 + \theta_1^2 + \theta_2^2} \\ &\qquad \rho(k) = 0 \text{ for } k > 2 \\[1em] &\text{6. Limitations on } \theta_1 \text{ and } \theta_2 \text{ (Invertibility Conditions):} \\ &\text{The MA(2) process is invertible if the roots of the characteristic equation} \\ &\text{lie outside the unit circle:} \\ &\qquad 1 + \theta_1 z + \theta_2 z^2 = 0 \\[1em] &\text{This leads to the following conditions:} \\ &\qquad \theta_2 + \theta_1 < 1 \\ &\qquad \theta_2 - \theta_1 < 1 \\ &\qquad -1 < \theta_2 < 1 \\[1em] &\text{These conditions ensure that the MA(2) process}\\ &\text{can be expressed as a convergent infinite AR process.} \\ \end{align*} $$
+
+
+$$ \begin{align*} &\text{MA(q) Process Overview:} \\[1em] &\text{1. Formula:} \\ &\qquad X_t = \mu + \epsilon_t + \theta_1 \epsilon_{t-1} + \theta_2 \epsilon_{t-2} + ... + \theta_q \epsilon_{t-q} \\[1em] &\text{Where:} \\ &\quad - X_t \text{ is the observed value at time } t \\ &\quad - \mu \text{ is the mean of the process} \\ &\quad - \theta_1, \theta_2, ..., \theta_q \text{ are the moving average parameters} \\ &\quad - \epsilon_t, \epsilon_{t-1}, ..., \epsilon_{t-q} \text{ are white noise terms with mean 0 and variance } \sigma^2 \\[1em] &\text{2. Theoretical Mean:} \\ &\qquad E[X_t] = \mu \\[1em] &\text{3. Theoretical Variance:} \\ &\qquad Var(X_t) = (1 + \theta_1^2 + \theta_2^2 + ... + \theta_q^2)\sigma^2 \\[1em] &\text{4. Autocovariance Function:} \\ &\qquad \gamma(0) = (1 + \theta_1^2 + \theta_2^2 + ... + \theta_q^2)\sigma^2 \\ &\qquad \gamma(k) = (\theta_k + \theta_{k+1}\theta_1 + ... + \theta_q\theta_{q-k})\sigma^2 \text{ for } 1 \leq k \leq q \\ &\qquad \gamma(k) = 0 \text{ for } k > q \\[1em]
+
+
+
+&\text{5. Autocorrelation Function:} \\ &\qquad \rho(0) = 1 \\ &\qquad \rho(k) = \frac{\gamma(k)}{\gamma(0)} \text{ for } 1 \leq k \leq q \\ &\qquad \rho(k) = 0 \text{ for } k > q \\[1em] &\text{6. Invertibility Condition:} \\ &\qquad \text{All roots of } 1 + \theta_1z + \theta_2z^2 + ... + \theta_qz^q = 0 \text{ lie outside the unit circle} \end{align*} $$
+
+
+
+ARMA(1,1) Model: $$ \begin{align*} &\text{ARMA(1,1) Process Overview:} \\[1em] &\text{1. Formula:} \\ &\qquad X_t = c + \phi X_{t-1} + \epsilon_t + \theta \epsilon_{t-1} \\[1em] &\text{Where:} \\ &\quad - X_t \text{ is the observed value at time } t \\ &\quad - c \text{ is a constant term} \\ &\quad - \phi \text{ is the autoregressive parameter} \\ &\quad - \theta \text{ is the moving average parameter} \\ &\quad - \epsilon_t \text{ and } \epsilon_{t-1} \text{ are white noise terms with mean 0 and variance } \sigma^2 \\[1em] &\text{2. Theoretical Mean (when } |\phi| < 1 \text{):} \\ &\qquad \mu = E[X_t] = \frac{c}{1-\phi} \\[1em] &\text{3. Theoretical Variance (when } |\phi| < 1 \text{):} \\ &\qquad \gamma(0) = Var(X_t) = \frac{1 + 2\phi\theta + \theta^2}{1 - \phi^2}\sigma^2 \\[1em] &\text{4. Autocovariance Function:} \\ &\qquad \gamma(1) = \frac{(\phi + \theta)(1 + \phi\theta)}{1 - \phi^2}\sigma^2 \\ &\qquad \gamma(k) = \phi\gamma(k-1) \text{ for } k > 1 \\[1em]
+
+
+&\text{5. Autocorrelation Function:} \\ &\qquad \rho(1) = \frac{(\phi + \theta)(1 + \phi\theta)}{1 + 2\phi\theta + \theta^2} \\ &\qquad \rho(k) = \phi\rho(k-1) \text{ for } k > 1 \\[1em] &\text{6. Stationarity and Invertibility Conditions:} \\ &\qquad |\phi| < 1 \text{ (Stationarity)} \\ &\qquad |\theta| < 1 \text{ (Invertibility)} \end{align*} $$
+
+
+
+$$ \begin{align*} &\text{ARMA(2,2) Process Overview:} \\[1em] &\text{1. Formula:} \\ &\qquad X_t = c + \phi_1 X_{t-1} + \phi_2 X_{t-2} + \epsilon_t + \theta_1 \epsilon_{t-1} + \theta_2 \epsilon_{t-2} \\[1em] &\text{Where:} \\ &\quad - X_t \text{ is the observed value at time } t \\ &\quad - c \text{ is a constant term} \\ &\quad - \phi_1 \text{ and } \phi_2 \text{ are the autoregressive parameters} \\ &\quad - \theta_1 \text{ and } \theta_2 \text{ are the moving average parameters} \\ &\quad - \epsilon_t, \epsilon_{t-1}, \epsilon_{t-2} \text{ are white noise terms with mean 0 and variance } \sigma^2 \\[1em] &\text{2. Theoretical Mean (when stationary):} \\ &\qquad \mu = E[X_t] = \frac{c}{1-\phi_1-\phi_2} \\[1em] &\text{3. Theoretical Variance:} \\ &\qquad \text{Solved using more complex methods} \\[1em] &\text{4. Autocovariance Function:} \\ &\qquad \text{Solved using more complex methods} \\[1em]
+
+
+&\text{5. Autocorrelation Function:} \\ &\qquad \text{Solved using more complex methods} \\[1em] &\text{6. Stationarity and Invertibility Conditions:} \\ &\qquad \text{Stationarity: All roots of } $$
+
+
+
+
+SARIMA(1,0,1)(1,0,0) - Seasonal Autoregressive Integrated Moving Average model of order (1,0,1) $$ (1 - \phi_1 B)(1 - \Phi_1 B^s)X_t = (1 + \theta_1 B)(1 + \Theta_1 B^s)\epsilon_t $$ How to write ARMA(1,1) process in terms of Backshift operators $$ (1 - \phi_1 B)X_t = (1 + \theta_1 B)\epsilon_t $$ Backshift Operator Where: B is the backshift operator s is the seasonal period \phi_1 is the non-seasonal AR parameter \Phi_1 is the seasonal AR parameter \theta_1 is the non-seasonal MA parameter \Theta_1 is the seasonal MA parameter \epsilon_t is white noise
+
+
+
+
+$$
+(1 - \phi_1 B)(1 - \Phi_1 B^s)X_t = (1 + \theta_1 B)(1 + \Theta_1 B^s)\epsilon_t
+$$
+
+References:
+1) For requirements of parameters of AR and MA (Autoregressive and Moving Average)
+https://online.stat.psu.edu/stat510/lesson/2/2.1
+
+2) How to write AR equation with seasonality differencing
+
+https://stackoverflow.com/questions/56879940/writing-mathematical-equation-for-an-arima1-1-00-1-0-12
+
+3) Excellent resource
+https://people.duke.edu/~rnau/411home.htm
+https://people.duke.edu/~rnau/411arim.htm
+
+# Require packages
+```{r}
+pacman::p_load(forecast,fpp3, quantmod, tseries, timeSeries, xts, ggplot2, urca, plotly, ggfortify)
+```
+
+```{r}
+pacman::p_load(remotes)
+remotes::install_github("KevinKotze/tsm")
+```
+
+
+
+
+$$
+(1 - \phi_1 B)(1 - \Phi_1 B^s)X_t = (1 + \theta_1 B)(1 + \Theta_1 B^s)\epsilon_t
+$$
+
+
+
+
+References:
+1) For requirements of parameters of AR and MA (Autoregressive and Moving Average)
+https://online.stat.psu.edu/stat510/lesson/2/2.1
+
+2) How to write AR equation with seasonality differencing
+
+https://stackoverflow.com/questions/56879940/writing-mathematical-equation-for-an-arima1-1-00-1-0-12
+
+3) Excellent resource
+https://people.duke.edu/~rnau/411home.htm
+https://people.duke.edu/~rnau/411arim.htm
+
+# Require packages
+```{r}
+pacman::p_load(forecast,fpp3, quantmod, tseries, timeSeries, xts, ggplot2, urca, plotly, ggfortify)
+```
+
+```{r}
+pacman::p_load(remotes)
+remotes::install_github("KevinKotze/tsm")
+```
+
+# TIME SERIES ANALYSIS
+Time series analysis is the art of extracting meaningful insights from time series data by exploring the series' structure and characteristics and identifying patterns that can then be utilized to forecast future events of the series.
+
+## Box-Jenkins approach
+
+Using ARIMA (Auto Regressive Integrated Moving Average). The general steps are as follows:
+
+AR - use past values of itself to model the time series
+MA - use past error terms to model the time series
+I - integrated - you have to DIFFERENCE the data first to convert to stationary t.s.
+
+Step 1: Plot data as time series, and check if *stationary*
+Step 2: Difference data to make data stationary on mean (remove trend)
+Step 3: log transform data to make data stationary on variance (if necessary)
+Step 3: log transform data to make data stationary on variance (if necessary)
+
+Step 4: If both transformations need to be performed, log transform the data first before differencing to make data stationary on both mean and variance
+
+Step 5: Check statistically if the time series is already stationary (adf test, kpss test)
+
+Step 6: Plot ACF (Autocorrelation function) and PACF (Partial autocorrelation function) to identify potential AR and MA model
+
+Step 7: Identification of best fit ARIMA model
+
+Step 8: Forecast the time series using the best fit ARIMA model
+
+Step 9: Plot ACF and PACF for residuals of ARIMA model to ensure no more information is left for extraction
+# STATIONARY TIME SERIES
+A stationary time series is one whose statistical properties such as mean, variance, autocorrelation, etc. are all constant over time, i.e., it has the property that the mean, variance and autocorrelation structure do not change over time.
+
+A stationarity looks like a flat looking series, without trend, constant variance over time, a constant autocorrelation structure over time and no periodic fluctuations.
+
+A stationary time series is one whose properties do not depend on the time at which the series is observed. Thus, time series with trends, or with seasonality, are not stationary - the trend and seasonality will affect the value of the time series at different times.
+
+Sample plot of Stationary vs Non-stationary TS
+https://www.oreilly.com/library/view/hands-on-machine-learning/9781788992282/15c9cc40-bea2-4b75-902f-2e9739fec4ae.xhtml
+
+https://towardsdatascience.com/stationarity-in-time-series-analysis-90c94f27322
+
+On the other hand, a **white noise series** is stationary - it does not matter when you observe it, it should look much the same at any point in time. In general, a stationary time series will have no predictable patterns in the long-term. Time plots will show the series to be roughly horizontal (although some cyclic behaviour is possible), with constant variance.
+
+Most statistical forecasting methods are based on the assumption that the time series can be rendered approximately **stationary** (i.e., "stationarized") through the use of mathematical transformations.
+A stationarized series is relatively easy to predict: you simply predict that its statistical properties will be the same in the future as they have been in the past. The predictions for the stationarized series can then be "untransformed," by reversing whatever mathematical transformations were previously used, to obtain predictions for the original series. Stationarizing a time series through differencing (where needed) is an important part of the process of fitting an Autoregressive Integrated Moving Average (ARIMA) model.
+
+
+Example of a series that is not stationary:
+```{r}
+data(AirPassengers) # from datasets package
+View(AirPassengers)
+ap <- AirPassengers
+View(ap)
+```
+
+
+# Understanding the AP object more
+```{r}
+ap
+str(ap)
+sum(is.na(ap)) #are there missing values
+frequency(ap)
+cycle(ap)
+summary(ap)
+```Is the ap dataset also stationary? Does it have a trend and seasonality?
+```{r}
+# Plot the raw data using the base plot function
+p1 <- plot(ap,xlab="Date",
+           ylab = "Passenger numbers (1000's)",
+           main="Air Passenger numbers from 1949 to 1960")
+p1
+```
+# Alteranative using ggfortify
+```{r}
+p2 <- autoplot(ap) +
+      labs(x ="Date",
+           y = "Passenger numbers (1000's)",
+           title="Air Passengers from 1949 to 1960")
+p2
+```
+
+Is the ap dataset also stationary? Does it have a trend and seasonality?
+```{r}
+# Plot the raw data using the base plot function
+p1 <- plot(ap,xlab="Date",
+           ylab = "Passenger numbers (1000's)",
+           main="Air Passenger numbers from 1949 to 1960")
+p1
+```
+# Alteranative using ggfortify
+```{r}
+p2 <- autoplot(ap) +
+      labs(x ="Date",
+           y = "Passenger numbers (1000's)",
+           title="Air Passengers from 1949 to 1960")
+p2
+```
+
+Using boxplot to see seasonal effects
+```{r}
+bp1 <- boxplot(ap~cycle(ap),
+               xlab="Date",
+               ylab = "Passenger Numbers (1000's)" ,
+               main ="Monthly Air Passengers Boxplot from 1949 to 1960")
+bp1
+```
+
+
+From these exploratory plots, we can make some initial inferences:
+
+1) The passenger numbers increase over time with each year which may be indicative of an increasing linear trend, perhaps due to increasing demand for flight travel and commercialisation of airlines in that time period.
+2) In the boxplot there are more passengers travelling in months 6 to 9 with higher means and higher variances than the other months, indicating seasonality with a apparent cycle of 12 months. The rationale for this could be more people taking holidays and fly over the summer months in the US.
+3) AirPassengers appears to be multiplicative time series as the passenger numbers increase, it appears so does the pattern of seasonality.
+4) There do not appear to be any outliers and there are no missing values. Therefore no data cleaning is required.
+
+Additive vs Multiplicative seasonality
+https://kourentzes.com/forecasting/2014/11/09/additive-and-multiplicative-seasonality/
+Decomposing the ap time series
+```{r}
+decomposeAP_add <- stats::decompose(ap,"additive") # Yt = Tt + St + Rt
+autoplot(decomposeAP_add)
+```
+
+
+Test stationarity of the time series (Augmented Dickey Fuller)
+```{r}
+tseries::adf.test(ap, alternative = "stationary", k=12)
+#H0: the time series is non-stationary
+```
+Or Test stationarity of the time series (Using correlogram - ACF and PACF)
+```{r}
+autoplot(acf(ap,lag.max = 30, plot=FALSE))+ labs(title="ACF of Air Passengers from 1949 to 1960")
+
+autoplot(pacf(ap,lag.max = 30,plot=FALSE))+ labs(title="PACF of Air Passengers from 1949 to 1960")
+```
+
+Same plot as above
+```{r}
+acf(ap, lag.max = 30)
+pacf(ap, lag.max = 30)
+```
+
+# ACF and PACF plots
+After a time series has been stationarized by differencing, the next step is to determine whether AR or MA terms are needed to correct any autocorrelation that remains in the differenced series.
+
+By looking at the autocorrelation function (ACF) and partial autocorrelation (PACF) plots of the differenced series, you can tentatively identify the numbers of AR and/or MA terms that are needed.
+
+# ACF plot: it is merely a bar chart of the coefficients of correlation between a time series and lags of itself.
+# The PACF plot is a plot of the partial correlation coefficients between the series and lags of itself.
+
+# We use the PACF to determine an AR (Auto Regressive) process
+If the PACF of the differenced series displays a sharp cutoff and/or the lag-1 autocorrelation is positive--i.e., if the series appears slightly "underdifferenced"--then consider adding an AR term to the model. The lag at which the PACF cuts off is the indicated number of AR terms.
+# We use the ACF to determine an MA (Moving Average) process
+If the ACF of the differenced series displays a sharp cutoff and/or the lag-1 autocorrelation is negative--i.e., if the series appears slightly "overdifferenced"--then consider adding an MA term to the model. The lag at which the ACF cuts off is the indicated number of MA terms.
+
+
+```{r}
+?stats::arima.sim
+```
+
+
+```{r}
+set.seed(123)
+a1 <- arima.sim(model = list(ar = 0.8), n = 1000)
+head(a1, 20)
+
+plot.ts(a1)
+```
+
+#Using kpss test - Computes the Kwiatkowski-Phillips-Schmidt-Shin (KPSS) test for the null hypothesis that x is level or trend stationary.
+```{r}
+#H0: data is trend-stationary
+kpss.test(ap, null="Trend")
+
+kpss.test(ap, null="Level")
+```
+
+
+```{r}
+?stats::arima.sim
+```
+
+
+```{r}
+set.seed(123)
+a1 <- arima.sim(model = list(ar = 0.8), n = 1000)
+head(a1, 20)
+
+plot.ts(a1)
+```
+
+===============================================================
+october 31 - GARCH
+
+
+```{r}
+forecast_values <- forecast(auto_modeel, h=24)
+
+
+
+```
+
+
+
+EMAIL INSERT HERE
+
+```{r}
+
+library(tseries)
+
+library(astsa)
+
+library(quantmod)
+
+library(forecast)
+
+library(tidyverse)
+
+```
+
+
+====
+
+
+```{r}
+
+# Plot the data
+
+plot(AirPassengers, main = "Monthly Air Passengers (1949-1960)", ylab = "Number of Passengers", xlab = "Year")
+
+```
+
+
+====
+
+
+
+```{r}
+
+# Perform the Augmented Dickey-Fuller test
+
+# H0: ts is NOT stationary
+
+library(tseries)
+
+adf_test <- adf.test(AirPassengers, 
+
+                     alternative = "stationary", k = 2)
+
+print(adf_test)
+
+```
+
+
+
+====
+
+The plot of the AirPassengers dataset shows a clear upward trend with a seasonal pattern. This suggests that the data is not stationary, as both the mean and variance increase over time.
+
+
+## Determine if Stationary Using the Plot and Statistical Test
+
+From the plot, we see non-stationarity due to the trend and seasonality. To statistically confirm, use the Augmented Dickey-Fuller (ADF) test.
+
+
+
+
+====
+
+
+
+Interpretation: If the p-value of the ADF test is greater than 0.05, we fail to reject the null hypothesis, indicating that the series is likely non-stationary.
+
+
+
+NOTE: Problem with the adf.test for testing for stationarity if the data is limited and has seasonality.
+
+
+
+The adf.test in the tseries package can sometimes give misleading results on data with strong seasonality and trends, like this dataset, which has both trend and seasonality. The adf.test is more reliable when testing for stationarity in series without such complex patterns.
+Overreliance on Autoregressive Terms: The adf.test assumes that any non-stationarity can be modeled by autoregressive terms, which can fail for seasonally non-stationary data.
+The result (p < 0.01) likely indicates that the series is stationary after accounting for the trend and seasonality, but this is misleading because the data is clearly non-stationary.
+====
+
+The Kwiatkowski-Phillips-Schmidt-Shin (KPSS) test
+is generally more reliable for detecting non-stationarity in series with trends and seasonality. Unlike the ADF test, where the null hypothesis is stationarity, the KPSS test has the null hypothesis of stationarity.A significant result from the KPSS test suggests non-stationarity.
+Use KPSS as the primary test to detect non-stationarity.
+Use ADF to confirm results after differencing (e.g., seasonal and/or first differencing) if necessary, as ADF can sometimes work well for the differenced data.
+The KPSS test should help you make a more accurate assessment of the stationarity in the AirPassengers dataset.
+
+## Level Stationarity (mu Stationarity):
+H0: ts is stationary around a constant level (also known as "level stationarity").
+This test assumes that the series has a constant mean, with no trend component. Use this when you expect the series to fluctuate around a constant mean without any trend.
+====
+
+# Trend Stationarity (tau Stationarity):
+
+H0: ts is stationary around a deterministic linear trend (also known as "trend stationarity").
+
+
+
+This test assumes the series has a stable trend, and deviations from this trend are stationary. Use this when you expect the series to have a linear trend component that is deterministic (predictable) but is not part of a random walk. 
+
+```{r}
+# KPSS test for trend stationarity (tau)
+kpss_test_trend <- kpss.test(AirPassengers, null = "Trend")
+
+print(kpss_test_trend)
+
+```
+
+====
+## Plot the ACF and PACF and Discuss
+
+
+
+```{r}
+
+# Plot ACF and PACF
+
+par(mfrow = c(1, 2))  # Set up the plot area for side-by-side plots
+
+acf(AirPassengers, main = "ACF of AirPassengers")
+
+pacf(AirPassengers, main = "PACF of AirPassengers")
+
+```
+
+
+
+====
+
+ACF Plot: The ACF plot shows a slow decay, which is typical of non-stationary series with a trend.
+
+PACF Plot: The PACF plot also shows a significant spike at the first lag, further indicating non-stationarity.
+## Use auto.arima to Generate the Model
+
+To generate an appropriate ARIMA model, we can use auto.arima from the forecast package, which will automatically select the best model parameters based on AIC.
+
+```{r}
+
+library(forecast)
+
+auto_model <- auto.arima(AirPassengers, trace = T)
+
+print(auto_model)
+
+```
+
+====
+
+$$
+
+(1 - 0.5960 B - 0.2143 B^2)(1 - B)(1 - B^{12}) y_t = (1 + 0.9819 B) \varepsilon_t
+
+$$
+
+$$
+
+\text{Model Equation:} \\
+
+(1 - 0.5960 B - 0.2143 B^2)(1 - B)(1 - B^{12}) y_t = (1 + 0.9819 B) \varepsilon_t \\
+
+
+
+\text{Where:} \\
+
+\text{- Non-seasonal AR(2) Component: } (1 - 0.5960 B - 0.2143 B^2) \\
+
+\text{- Non-seasonal Differencing: } (1 - B) \\
+
+\text{- Seasonal Differencing with Period 12: } (1 - B^{12}) \\
+
+\text{- MA(1) Component: } (1 + 0.9819 B) \varepsilon_t \\
+
+
+
+\text{Explanation:} \\
+
+y_t \text{ is the time series value at time } t. \\
+
+B \text{ is the backshift operator, where } B y_t = y_{t-1}. \\
+
+\varepsilon_t \text{ is the error term or white noise.}
+
+$$
+
+$$
+
+y_t = 0.5960 y_{t-1} + 0.2143 y_{t-2} + \varepsilon_t \\- 0.9819  \varepsilon_{t-1}  + y_{t-12} - 0.5960 y_{t-13} - 0.2143 y_{t-14} - y_{t-1} + y_{t-13} 
+
+$$
+
+====
+
+DIAGNOSTICS
+
+## Forecast for the Next 24 Months
+
+```{r}
+
+# Forecast the next 24 months
+
+forecast_values <- forecast(auto_model, h = 24)
+
+forecast_values
+
+```
+
+
+
+```{r}
+
+# Plot the forecast
+
+plot(forecast_values, main = "24-Month Forecast for AirPassengers")
+
+
+
+```
+
+
+
+## Check the Residuals for Heteroscedasticity and Other Diagnostics
+
+To examine residual diagnostics, you can use the checkresiduals function, which will perform diagnostic checks, including heteroscedasticity.
+
+```{r}
+
+#Residual diagnostics
+
+checkresiduals(auto_model)
+
+```
+
+
+
+```{r}
+
+resid <- auto_model$residuals
+
+plot(resid)
+acf(resid)
+pacf(resid)
+
+# H0: ts is stationary
+
+kpss.test(resid, null = "Level")
+
+```
+
+
+
+```{r}
+#null hypothesis is that residuals are normaly distrubuted 
+# .01 reject because there is no normal residuals
+
+
+```
+
+READ ON BACKSHIFT OPERATOR in ARIMA
+######
+ARCH AND GARCH
+11 NOV 2024
+================================================================================
+ARCH was made to work on the weakness of arima 
+
+```{r GARCH}
+library(tseries)
+library(rugarch)
+library(quantmod)
+library(tseries)
+# start with arima > model returns > model the volatility using GARCH > if there is no volatility then why use GARCH
+
+# basis for comparison us akaik information criterion (AIC) > this will help us compare GARCH models
+
+#  study backshift notation 
+# Link: https://otexts.com/fpp2/backshift.html
+
+# Garch and e(GARCH)
+
+```
+
+```{r GJR - GARCH}
+
+
+
+```
+
+```{r}
+# eGarch
+# GJR GARCH
+# apARCH 
+# iGARCH
+
+```
+
+```{r}
+# Load necessary packages
+pacman::p_load(quantmod, rugarch, tseries, forecast, PerformanceAnalytics, tsm, FinTS)
+```
+
+```{r CODE}
+require(quantmod)
+library(tseries)
+library(rugarch)
+library(quantdr)
+
+#getSymbols("AAPL",from="2015-01-01",to="2023-12-31")
+#aapl <- cl(AAPL)
+
+
+```
+
+
+```{r}
+require(quantmod)
+library(tseries)
+library(rugarch)
+library(quantdr)
+library(tseries)
+# Load the data
+getSymbols("AAPL", from = "2015-01-01", to = "2023-12-31")
+aapl <- Cl(AAPL)
+```
+
+```{r}
+# Plot the data
+plot(aapl, main = "AAPL Closing Prices", ylab = "Price", xlab = "Date")
+```
+
+```{r}
+# Get the log returns of the data
+aapl_ret <- na.omit(diff(log(aapl)))
+```
+
+```{r}
+plot(aapl_ret, main = "AAPL Closing Prices", ylab = "Price", xlab = "Date")
+# there is volatility clustering on the outliers
+
+```
+
+```{r}
+require(forecast)
+arima_aapl <- auto.arima(aapl_ret,trace = T)
+summary(arima_aapl)
+```
+Step 4: Residual Analysis
+```{r}
+# ACF and PACF of residuals
+par(mfrow = c(1, 2))
+Acf(arima_aapl$residuals, main = "ACF of ARIMA Residuals")
+Pacf(arima_aapl$residuals, main = "PACF of ARIMA Residuals")
+# Ljung-Box test
+Box.test(arima_aapl$residuals, type = "Ljung-Box")
+```
+
+
+```{r}
+#par(mfrow = c(1,2))
+#Acf(aapl_ret, main = "ACF of Differenced Data")
+#Pacf(aapl_ret, main= "PCF of Differenced Data")
+
+```
+
+```{r}
+#install.packages("rugarch")
+```
+```{r}
+# Ljung box test not preferred
+# Use 
+```
+
+```{r}
+#install.packages("FinTS")
+```
+
+
+```{r}
+require(FinTS)
+require(rugarch)
+```
+
+Null Hypothesis (H₀): The residuals are independently distributed (i.e., no autocorrelation).
+Alternative Hypothesis (H₁): The residuals are not independently distributed (i.e., exhibit autocorrelation).
+
+```{r}
+aapl_arch_test <- FinTS::ArchTest(residuals(arima_aapl),lags=12)
+aapl_arch_test # Reject | There are ARCH Effects 
+```
+>>> Therefore we can do ARCH GARCH 
+
+
+
+Step 5: Fit the GARCH Model
+
+
+```{r}
+# Specify GARCH model
+garch_spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+                         mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
+                         distribution.model = "norm")
+```
+
+
+```{r}
+# Fit GARCH model
+# This only models the residuals
+garch_model <- ugarchfit(spec = garch_spec, data = arima_aapl$residuals)
+#summary(garch_model)
+garch_model
+```
+
+
+
+```{r}
+# Fit EGARCH model for comparison
+# EGARCH has gamma vs SGARCH (no leverage effect)
+
+egarch_spec <- ugarchspec(variance.model = list(model = "eGARCH", garchOrder = c(1, 1)),
+                          mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
+                          distribution.model = "norm")
+egarch_model <- ugarchfit(spec = egarch_spec, data = arima_aapl$residuals)
+summary(egarch_model)
+egarch_model
+
+```
+
+
+
+```{r}
+# Fit TGARCH model for comparison
+tgarch_spec <- ugarchspec(variance.model = list(model = "fGARCH", submodel = "TGARCH", garchOrder = c(1, 1)),
+                          mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
+                          distribution.model = "norm")
+tgarch_model <- ugarchfit(spec = tgarch_spec, data = arima_aapl$residuals)
+summary(tgarch_model)
+```
+
+
+```{r}
+# Compare models
+#AIC(garch_model)
+#AIC(egarch_model)
+#AIC(tgarch_model)
+```
+Step 6: Final Model and Forecasting
+```{r}
+# Choose the best model based on AIC
+best_model <- garch_model
+```
+
+```{r}
+# VUCA Model - olatility, Uncertainty, Complexity, Ambiguity
+# BANI Model - Brittle, Anxious, Nonlinear, Incomprehensi
+
+
+```
+
+===============================================
+OVER VIEW AGAIN ON PREVIOUS LESSON (LAST CLASS ABOVE)
+
+
+sTep 1: Data Preparation
+
+```{r}
+# Load necessary packages
+library(quantmod)
+library(forecast)
+library(tseries)
+library(rugarch)
+```
+
+
+```{r}
+# Load necessary packages
+pacman::p_load(quantmod, rugarch, tseries, forecast, PerformanceAnalytics, tsm, FinTS)
+```
+
+
+
+```{r}
+# Load the data
+getSymbols("AAPL", from = "2005-01-01", to = "2023-12-31")
+aapl <- Cl(AAPL)
+```
+
+```{r}
+# Plot the data
+plot(aapl, main = "AAPL Closing Prices", ylab = "Price", xlab = "Date")
+```
+
+```{r}
+# Get the log returns of the data
+aapl_ret <- na.omit(diff(log(aapl)))
+plot(aapl_ret)
+```
+
+```{r}
+# Plot the returns data
+plot(aapl_ret)
+
+```
+
+Step 2: ARIMA Model Identification
+
+
+==============
+
+Test 1
+when doing arima we need to test if the data is stationary
+when adf test (augmented dickey fuller test)
+null hypothesis is not stationary
+reject the null if it is not stationary
+
+```{r}
+# Check for stationarity
+adf.test(aapl_ret)
+```
+
+Test 2
+KPSS test FOR LEVEL STATIONARY
+WE FAIL TO REJECT THAT THE DATA IS STATIONARY
+
+
+```{r}
+kpss.test(aapl_ret, null = "Level")
+```
+
+
+==========================================
+ACF AND PACF TEST -- NO CODE
+
+SIGNIFICANT SPIKES TELLS US THAT THIS IS NOT WHITE NOISE - WHICH MEANS WE CANNOT USE ARIMA MODEL SINCE IT WILL BECOME 0,0,0 - NO AR COMPONENT, NO ~~, NO DIFFERENCING
+
+
+ACF AND PACF TELLS US IF WE CAN MODEL THIS USING ARIMA
+
+==========================================
+
+STEP 3
+
+
+Step 3: Fit the ARIMA Model
+```{r}
+# Fit ARIMA model
+arima_aapl <- auto.arima(aapl_ret, trace = T)
+summary(arima_aapl)
+```
+
+
+
+DIFFERENCING WILL BE NEEDED IF THERE IS A TREND
+INF IS NOT USED SINCE AIC IS INF
+
+BEST MODEL ARIMA (001) - BECAUSE IT IS THE LOWEST
+MOVING AVERAGE 1 W NON ZERO MEAN BUT IT ADDED A SMALL MEAN 0.0011 (not statisfically significant)
+
+
+```{r}
+# Plot residuals
+checkresiduals(arima_aapl)
+```
+
+
+=========================================================
+Analyze the chart
+
+acf plot has a spike due to vol clustering visiblee in residuals distribution plot
+there is a correlation on lag 8, lag 9 and on the top part 0.050 (ACF Plot) this is not okay (jump to acf plot chunk)
+
+
+=========================================================
+our arima model
+
+model of appl returns = we use the MA model of arima
+
+aapl_ret = alpha zero (or theta0) + theta 1 and epsilon t-1 /  e sub t
+
+aapl_ret = 0.0011 + .0279 summationt-1
+
+
+we still check residuals even if we have our model
+the residuals should not be correlated 
+
+=========================================================
+
+Step 4: Residual Analysis
+```{r}
+# ACF and PACF of residuals
+par(mfrow = c(1, 2))
+Acf(arima_aapl$residuals, main = "ACF of ARIMA Residuals")
+Pacf(arima_aapl$residuals, main = "PACF of ARIMA Residuals")
+```
+
+
+This tells us that the residuals are not white noise 
+
+=========================================================
+
+```{r}
+# Ljung-Box test
+Box.test(arima_aapl$residuals, type = "Ljung-Box")
+```
+
+Box test tells us that - IT IS NOT THE SAME WITH PCF AND ACF
+
+Null hypthesis for box-ljung test
+
+NOTE: ACF AND PCF AND BOX TEST USE CAUTION AS THEY ARE NOT CONGRUENT CHECK INTERPRETATION ABOVE
+
+
+=========================================================
+ARCH TEST - better test compared to previous acf pcf and box
+
+
+Null Hypothesis (H₀): The residuals are independently distributed (i.e., no autocorrelation).
+Alternative Hypothesis (H₁): The residuals are not independently distributed (i.e., exhibit autocorrelation).
+
+```{r}
+require(FinTS)
+```
+
+```{r}
+aapl_arch_test <- FinTS::ArchTest(residuals(arima_aapl), lags = 12)
+aapl_arch_test
+```
+reject so there is arch effects there is heteroskedacity and not white noise and arima wont stand
+
+then we go with garch model
+
+==============================================================================================
+
+=========================================================
+AFTER CASE 1 | 13 NOV 2024
+GARCH MODELING
+
+"note: OUR MODEL SHOULD NOT BE OK WITH JUST ARIMA"
+
+STEPS:
+1. FIRST STEP TRY ARIMA (AUTO.ARIMA) - ARIMA WILL NOT TELL YOU THE LOG (UNLESS YOU GET THE PRICE OF THE STOCK (LOG-DIFF AKA CONTINOUS RETURNS))
+
+ARIMA MODELS THE
+ARCH MODELS VARIANCE OR VOLATILITY
+ARCH MODEL TAKES INTO CONSIDERATION THE SQUARED RESIDUALS 
+ARCH CAN CAPTURE VOL CLUSTERING BUT NOT EFFICIENTLY
+
+GARCH
+CAPTURES VOLATILITY CLUSTERING
+
+GJR GARCH
+INDICATOR FUNCTION - 
+
+=========================================================
+
+first create GARCH Spec
+
+Step 5: Fit the GARCH Model
+
+
+
+```{r}
+# Specify GARCH model
+garch_spec <- ugarchspec(variance.model = list(
+model = "sGARCH"
+  ,garchOrder = c(1, 1))
+  ,mean.model = list(armaOrder = c(0, 0)
+  ,include.mean = TRUE)
+  ,distribution.model = "norm"
+) #THIS MAKES OUR MODEL NORMAL AND MAKES OUR TEST GOOD BUT 
+```
+
+uGarch == univariate garch spec
+note that we are modeling series of applret but the residuals, we are modeling to address vol clustering
+
+
+=========================================================
+
+```{r}
+# Fit GARCH model
+garch_model <- ugarchfit(spec = garch_spec
+                         ,data = arima_aapl$residuals)
+garch_model
+# WE ARE NOT MODELING THE MEAN BUT THE RESIDUALS 
+# GARCH MODEL CAN BE CHECKED ABOVE ON THE NUMBER 2 GENERALIZED AUTOREGRASSIVE CONDITIONAL HETEROSKEDACTISTY
+```
+ ======== Mu  ========
+ 
+OUR RESIDUALS ARE NORMMALY DISTRIBUTED (FIRST OUTPUT GRAPH)
+THE SECOND GRAPH SHOWS THE VALUE OF THE GARCH MODEL
+breakdown of mathematical model
+GARCH = ALPHA SUB 0 
+MEAN (Mu)
+GETTING THE AVERAGE OF THE RESIDUALS - ONE GOOD THING IS YOU CAN SEE THE DIFF BETWEEN THEORETICAL AND LONG RUN AVERAGE 
+THEORETICAL AVERGAE NON STATISTICAL SIGNIFICANT
+NOT NECESSARY BUT THE PURPOSE IS TO JUST GET THE 
+(CONSTANT OR MU) #INCLUDE .MEAN HENCE THIS WAS ADDED (BUT IS IT NOT REALLY NEED WE ONLY ADDED IT )
+
+```{r}
+# EXPLANATION FOR ADDING MEAN
+mean(arima_aapl$residuals)
+# or 0.00003 or 0.00004 - - theoretical average
+```
+
+OMEGA (alphasub0)
+,OMEGA IS CONSTANT RESIDUAL SQUARED - LONG RUN AVERAGE OR ALPHA SUB 0
+
+ALPHA1 - RESIDUAL SQUARD AT LOG 1
+BETA1 - SIGMA SQUARED AT LOG 1
+
+
+======== GARCH MODEL ========
+MODEL of residuals of aapl ret
+
+GARCH(1,1)
+GARCH(Q,P)
+Q == SQUARED RESIDUALS -- OR EPSILON t-1
+0.000011 + .09q * q *+ 0.88
+
+
+ ======== optimal parameters  ========
+ 
+OPTIMAL PARAMETERS
+
+
+ ======== ROBUST ========
+ROBUST STD ERRORS
+MODELS THE PARAMETERS IN SUCH A WAY THAT IT IS ROBUST 
+ 
+ 
+======== INFORMATION CRITERION  ========
+
+
+THE BIGGER THE LOG LIKELIHOOD THE BETTER THE MODEL IS
+FOR COMPARISON ON AICIK 
+
+
+========Weighted Ljung-Box Test on Standardized Residuals  ========
+ LAG1
+ LAG2
+ LAG3
+ LAG4
+ ALL REJECT NULL SINCE THERE IS A SERIAL CORRELATION
+ MEANING OUR MODEL IS NOT GOOD
+ SIGNIFICANT WHICH MEANS THERE IS SERIAL
+ 
+ 
+ 
+======== Weighted Ljung-Box Test on Standardized Squared Residuals  ========
+
+FIAL TO REJECT 
+BOTH RESIDUALS AND SQUARED RESIDUALS TO BE NOT SIGNIFICANT
+HERE IT IS NOT SIGNIFICANT
+
+
+
+======== WEIGHTED ARCHLM TEST======== 
+
+WE REJECT SO IT IS GOOD
+SINCE THERE IS NO ARCH EFFECTS AND WE FAIL TO REJECT THE NULL HYPOTHESIS
+
+HYPOTHESIS IS WE THERE IS NO ARCH EFFECTS 
+
+
+======== Nyblom stability test ======== 
+
+IF INDIV STATISTICS < JOINT 
+JOINT = 12.5 (CRITICAL VALUE)
+IF IT IS GREATER THAN JOINT THEN IT IS UNSTABLE
+IF ANY OF THE INDIV STAT IS > THAN JOINT (CRITICAL VALUE) IT IS UNSTABLE 
+
+
+
+WE
+
+ASYMPTOTIC CRITICAL
+JOINT STAT TELLS US OVERALL (12%)
+SO WE USE ASYMPOTTIC TO COMPARE
+
+JOINT STAT AT ASYMPTOTIC IS 1.07 AND THIS TELLS US THERE IS INSTABILITY
+JOINT STAT == 1.07, 1.24, 1.6
+INDIV 0.35,0.47,0.75
+
+EG MU IS 3.38 AND IT IS LARGER THAN 10% OR 5% OR 1%
+OMEGA IS THE SAME
+AND ALL THE SAME
+EXCEPT ALPHA1 AT 0.75 AT 1% IS STILL HIGHER BUT SMALL SINCE 0.75% IS THE SAME
+
+======== GOODNESS OF FIT TEST ======== 
+IF OUR MODEL FITS OUR DATA
+
+GROUP (# OF BINS)
+GROUP 20
+GROUP 30
+GROUP 40
+GROUP 50
+
+IT CREATES THE BINS THEN TAKES THE RESIDUALS AND USES HYPOTHESIS TESTING
+HYPOTHESIS: IS THERE A DIFF ON OUR MODEL VALUES AND ACTUAL 
+
+REJECT THE HYPOTHESIS THERE IS NO DIFFERENCE AT GROUP 20 (BINS TO PLOT RESIDUALS THE PVALUE IS STILL LOW)
+
+MODEL VALUE IS NOT THE SAME AS THE ACTUAL AND PRED HENCE WE REJECT AND IT IS NOT FIT
+IT HAS A LOT TO DO WITH THE ASSUMPTIONS ABOVE SINCE WE ASSUME OUR DIST IS NORMAL
+
+
+======== SIGN BIAS - NEXT GRAPH ======== 
+
+SIGN BIAS
+NEGATIVE SHOCKS CANT BE CAPTURED BY OUR VOLATILTY MODEL
+
+NEGATIVE THERE IS BIAS
+POSITIVE NO BIAS
+
+JOINT THERE IS BIAS
+
+=======================================
+
+we now change the model to std rather than norm
+
+
+we just change the distribution.model
+this is the best model as compared to normal distribution
+
+Step 5a: Fit the GARCH Model
+```{r}
+# Specify GARCH model
+garch_spec_std <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+                         mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
+                         distribution.model = "std")
+```
+
+```{r}
+# Fit GARCH model
+garch_model_std <- ugarchfit(spec = garch_spec_std, data = arima_aapl$residuals)
+garch_model_std
+```
+
+
+squared residuals is now insignificant as compared to the norm dist 
+our hypothesis is no autocorrelation but we acept this so there is no serial correlation and accept null hypothesis
+
+
+
+====
+instability
+overall = there is instability
+individual = mixed 
+
+
+=========================================================
+Important Note:::::::
+THIS WILL LET US KNOW WHICH DISTRIBUTION TO USE IN STATISTICS
+
+
+Note that we use norm and students t in the distribution.model parameter since it is the only good distribution in our situation
+=========================================================
+
+
+=========
+NOTE THE MOST IMPORTANT IS THAT THE MODEL IS SIGNIFICANT (OMEGA, ALPHA1, BETA1)
+=========
+
+===========================================================================================================================================================================
+
+### EGARCH Model
+
+$$
+\begin{aligned}
+&\textbf{EXPONENTIAL GARCH Model} \\
+&\ln(\sigma_t^2) = \alpha_0 + \sum_{i=1}^p \alpha_i \frac{\epsilon_{t-i}}{\sigma_{t-i}} + \gamma_i \left( \frac{|\epsilon_{t-i}|}{\sigma_{t-i}} - \sqrt{\frac{2}{\pi}} \right) + \sum_{j=1}^q \beta_j \ln(\sigma_{t-j}^2) \\
+&\text{where:} \\
+&\sigma_t^2 \text{ is the conditional variance at time } t, \\
+&\alpha_0 \text{ is a constant term,} \\
+&\alpha_i \text{ are the coefficients of the standardized residuals,} \\
+&\gamma_i \text{ is the coefficient capturing the asymmetry,} \\
+&\beta_j \text{ are the coefficients of the past variances (GARCH terms),} \\
+&p, q \text{ are the orders of the ARCH and GARCH components, respectively.}
+\end{aligned}
+$$
+
+
+EGARCH MODEL
+RATOI OF YOUR AND STD ERROR 
+
+FIRST PART IS ARCH SECOND IS GARCH
+THEN WE HAVE GAMMA WHCIH CAPTURES ASSYMETRY 
+ABOSOLUTE VALUE OF ERROR OVER STD ERROR WHICH IS ALWAYS POSITIVE
+LAST IS LOG OF VOLATILTIY (SIGMA SQUARED IS ALWAYS POSITIVE)
+
+
+
+
+$$
+\begin{aligned}
+&\textbf{GJR-GARCH Model} \\
+&\sigma_t^2 = \alpha_0 + \sum_{i=1}^{q} \alpha_i \epsilon_{t-i}^2 + \sum_{j=1}^{p} \beta_j \sigma_{t-j}^2 + \sum_{i=1}^{q} \gamma_i \epsilon_{t-i}^2 \mathbb{I}(\epsilon_{t-i} < 0) \\
+&\text{where:} \\
+&\sigma_t^2 \text{ is the conditional variance at time } t, \\
+&\alpha_0 \text{ is a constant term,} \\
+&\alpha_i \text{ are coefficients for the lagged squared residuals,} \\
+&\epsilon_{t-i} \text{ are the lagged residuals (errors),} \\
+&\beta_j \text{ are coefficients for the lagged conditional variances,} \\
+&\sigma_{t-j}^2 \text{ are the lagged conditional variances,} \\
+&\gamma_i \text{ are coefficients for the leverage effect,} \\
+&\mathbb{I}(\epsilon_{t-i} < 0) \text{ is an indicator function that equals 1 if } \epsilon_{t-i} < 0 \text{ and 0 otherwise,} \\
+&p \text{ and } q \text{ are the orders of the GARCH model.}
+\end{aligned}
+$$
+
+
+
+THIS IS GAMMA == EFFECT ON NEGATIVE SHOCKS AND SIGNIFICANT
+
+ON THE MODEL IF THE LAST PART EPSILON T-1 IS LESS THAN 0
+IT WILL ASSUME THE VALUE OF 1 OR < 1 IT WILL BECOME ACCEPTED
+IF THE SHOCK IS POSITIVE OR > 1 == IT WILL BECOME 0
+
+IF GREATER THAN 0 OR EQUAL TO 0, IT WILL BECOME 0
+IF IT IS LESS THAN 0 OR NEGATIVE SHOCK IT WILL BECOME 1
+
+POSITIVE IMPACTS ARE TREATED AS 0
+
+NEGATIVE ARE ADDITIONAL INPUTS IMPACTS ARE TREATED AS 0
+
+
+
+
+
+HIGHER GJR GARCH
+LOWER AIC AS WELL
+HENCE THIS IS BETTER AS COMPARED TO THE STD GARCH
+
+basically egarch adds more weight to the negative shocks as compared to GJR GARCH (IT BECOMES -1 )
+
+IT IS ALSO A WEAKNESS BECAUSE NOT ALL NEGATIVE SHOCKS HAS IMPACT ON VOLATILITY SOME POSITIVE SHOCKS ARE MORE VOLATILE
+
+============================================
+HOW TO DEFINE POSITIVE OR NEGATIVE SHOCKS:
+
+NEGATIVE SHOCKS
+IF RESIDUAL  IS (t-1) 
+GET THE RESIDUALS OF AAPL
+
+there are negative and positive (this is what we are modeling in garch)
+the positives are going in the gamma parameter in the model
+
+every negative here is considered as negative shocks and become part of the model
+
+```{r}
+# RESIDUALS COMING FROM ARIMA MODEL
+resid <- arima_aapl$residuals
+resid
+
+#there are negative and positive (this is what we are modeling in garch)
+#the positives are going in the gamma parameter in the model
+#every negative here is considered as negative shocks and become part of the model
+```
+
+============================================
+
+
+```{r}
+# Fit EGARCH model for comparison
+egarch_spec <- ugarchspec(variance.model = list(model = "eGARCH", garchOrder = c(1, 1)),
+                          mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
+                          distribution.model = "std")
+egarch_model <- ugarchfit(spec = egarch_spec, data = arima_aapl$residuals)
+egarch_model
+```
+
+```{r}
+# Fit TGARCH model for comparison
+tgarch_spec <- ugarchspec(variance.model = list(model = "fGARCH", submodel = "TGARCH", garchOrder = c(1, 1)),
+                          mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
+                          distribution.model = "norm")
+tgarch_model <- ugarchfit(spec = tgarch_spec, data = arima_aapl$residuals)
+tgarch_model
+```
+
+
+
+best arima
+
+if so is it capable of model volatiility arch test
+
+then run garch models and find best garch models 
+
+also add other garch models 
+
+discussed 
++ gjrgarch + egarch +tgarch 
+
+
+not discussed:
+aparch + garch in main
+
+use reserach on the models
+run diff garch models and compare using AIC or ramsey or MAE
+
+
+===========================================
+
+END ~~~
+next panel data
+
+===========================================
+multivariate garch
+vector auto reg
+vec reg
+response 
+
+===========================================================
+===========================================================
+===========================================================
+====  NEXT SESSIONNEXT SESSIONNEXT SESSIONNEXT SESSION =======================
+
+this will be the whole case process
+
+
+```{r}
+library(quantmod)
+library(forecast)
+library(tseries)
+library(rugarch)
+```
+
+```{r}
+require(quantmod)
+library(tseries)
+library(rugarch)
+library(quantdr)
+library(tseries)
+# Load the data
+getSymbols("AAPL", from = "1998-01-01", to = "2023-12-31")
+aapl <- Cl(AAPL)
+```
+
+
+
+```{r}
+aapl <- Cl(AAPL)
+aapl_ret <- dailyReturn(aapl,type="log")
+aapl_ret <- aapl_ret[-1] #aapl_
+```
+
+check phone for codes here
+
+```{r}
+aapl_arima <- auto.arima(aapl_ret, trace = T)
+```
+
+
+```{r}
+coeftest(aapl_arima)
+```
+
+didnt code the next ones 
+
+pvalue and AIC might not coincide
+
+hence use coeftest(aapl_arima)
+
+we can see ar1 and ar2 are not significant 
+
+
+# ARIMA (3,0,1) is the best model but does not mean it is significant
+
+log 1 ar1 log1 of ma1 that means we have arima(1,1)
+
+
+
+```{r}
+fit_arima
+
+arma_11_model <- Arima(aapl_ret,oreder = c(1,0,1))
+
+```
+
+started phone video<>
+
+
+check phone for arma 11 model - important part 
+
+white noise =  zero mean white, note spikes, no vol clustering
+
+started phone video<>
+
+## Trying another auto.arima model
+```{r}
+fit_arima_aapl <- auto.arima(aapl_ret, seasonal = FALSE, 
+                             stepwise = FALSE, 
+                             approximation = FALSE)
+summary(fit_arima_aapl)
+```
+
+<>phone video<>
+
+
+
+
+
+## Trying another auto.arima model
+```{r}
+fit_arima_aapl <- auto.arima(aapl_ret, seasonal = FALSE, 
+                             stepwise = FALSE, 
+                             approximation = FALSE)
+summary(fit_arima_aapl)
+```
+These parameters influence how auto.arima() searches the model space:
+seasonal = FALSE omits seasonal components from consideration.
+stepwise = FALSE disables the stepwise search algorithm, potentially leading to a more exhaustive search.
+approximation = FALSE ensures that the model selection is based on exact computation rather than approximations.
+
+
+
+
+
+
+
+<>phone video<>
+
+
+```{r}
+arma 1,1 and arma 4,4
+turns our 1,1 better
+```
+
+if not significant in linear regression we still include it in the model 
+
+
+<>
+phone stopped at garch model 
+<>
+
+================================================
+garch model
+
+may autocorellation in the resid so we use garch  (check above)
+
+we carry over the mean.model
+
+
+=============== phone continued to record on garch after break =======================
+
+
+
+
+GARCH MODEL1
+## Fit the GARCH Model for ARMA(0,4) model assuming "norm" dist. residuals of the garch
+```{r}
+# Specify GARCH model
+garch_spec_norm <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)), mean.model = list(armaOrder = c(0, 4), include.mean = TRUE), 
+  fixed.pars = list(ma2 = 0, ma3 = 0),  # MA(0,4) with only ma1 and ma4
+  distribution.model = "norm")
+
+garch_model_norm <- ugarchfit(spec = garch_spec_norm, data = arma_04_model$residuals)
+print(garch_model_norm)
+```
+
+garch_spec_std
+<>
+
+we are not am1 and am 3 because they are non zero
+we used this before as "std" its best to use std
+
+
+```{r specific garch model}
+
+garch_spec_std ugarchspec(variance ...//.)
+garch_model_std
+garch_model_std
+
+
+
+
+```
+
+arma 004 (since only 4 is significant) because our MA is not significant because we captured it in the vol so we only need MA1 not Ma4
+\
+
+arima > look for the best model > found out vol clustering (visually autocorrelation) > carry that in garch > model now gives us new arima model which is MA1 not MA4
+alpha1 = coefficient parameter for squared something
+res are not normally dist use t students dist since we have plot tails
+
+we fail to reject null hypo in ljung box test = this is a mean model not resid squared (this refers to vol) while standardized squard residuals 
+hence our model was able to capture our residuals 
+
+
+arch effects check  code 1309 == no arch effects hence our model was able to vol clustering
+
+======================
+niblum stability test
+joint statistic
+even if not unstable it is insignificant
+
+
+
+======================
+
+
+zoo 
+
+
+```{r zoo res}
+we use this to check the residuals and plot the residuals 
+
+res <- residuals(garch_model_std)
+
+# Convert to 'zoo' object with an appropriate time index (you'll need to supply this)
+# Assume 'time_index' is a vector with the time index (dates, periods, etc.)
+zoo_res <- zoo(res, order.by = index(aapl_ret))
+res_ts <- ts(zoo_res)
+
+# Use checkresiduals on the zoo object
+checkresiduals(res_ts)
+
+# For plotting, you can also use the plot function directly on 'zoo_res'
+plot(res_ts)
+```
+
+
+## eGarch
+
+```{r}
+egarch_spec <- ugarchspec
+
+
+```
+## e-garch
+gamma is added in egarch and ejg garch, it is used to measure assymetry (positive gamma in egarch indicates a stronger reaction to positive shocks)
+
+Sign bias (gamma): Indicates the magnitude of asymmetry. Positive values suggest stronger reactions to negative shocks.
+
+
+```{r}
+egarch_spec <- ugarchspec(
+  variance.model = list(model = "eGARCH",  # EGARCH model
+                        garchOrder = c(1, 1)),  # GARCH(1,1)
+  mean.model = list(armaOrder = c(0, 4), include.mean = TRUE), 
+  fixed.pars = list(ma2 = 0, ma3 = 0),  # MA(0,4) with only ma1 and ma4
+  distribution.model = "std"  # Standardized t-distribution
+)
+
+egarch_model <- ugarchfit(spec = egarch_spec, data = arma_04_model$residuals)
+summary(egarch_model)
+```
+
+
+
+## e garch without fixed.pairs)
+
+```{r}
+
+```
+
+NOTE: Egarch and Sgarch is not compared check (1424)
+sgarch bias itself
+its incorrect that AIC of sgarch is lower that AIC of egarch since they are different
+
+this one tells us that ther eis bigger impact on apple ret than on positive shocks 
+
+fit model == no serial correlation
+no arch effects
+
+e garch was able to capture all arch effects
+niblum has instability overall, individually MA1 is stable across all asymptotic critical values
+MA2 and MA3 is stable, however insiginifcant
+all other oethers not stable.  gamma  stable only at 5%
+
+
+all are insignificant so egarch is stable 
+========================
+stability
+sign bias is overall
+positive is not capture positive shocks
+negative as well
+=======================
+
+egarch although it incorporates assymetry its not still a good model 
+
+
+
+===============================================
+SUMMARY for GARCH
+overall there are 11 models, jsut do it one by one and keep yourself familiarized
+
+
+
+===============================================
+
+end of repeat discussion | new topic is panel data
+
+PANEL DATA START
+# APARCH
+The APARCH (Asymmetric Power ARCH) model is a general framework that captures both asymmetry and power transformations in the volatility.
+
+```{r}
+aparch_spec <- ugarchspec(
+  variance.model = list(model = "apARCH",  # APARCH model
+                        garchOrder = c(1, 1)),  # GARCH(1,1)
+  mean.model = list(armaOrder = c(0, 4), 
+                    include.mean = TRUE), 
+  fixed.pars = list(ma2 = 0, ma3 = 0),  # MA(0,4) with only ma1 and ma4
+  distribution.model = "std"  # Standardized t-distribution
+)
+
+aparch_model <- ugarchfit(spec = aparch_spec, data = arma_04_model$residuals)
+aparch_model
+```
+
+
+
+third vid on aparch start
+
+Assymetric Power Arch
+
+
+Model
+
+take not of sigma to the delta on left hand
+
+if delta is close to 2 then we model the ...
+
+if delta is close to 1 best to model to stdev
+
+
+
+
+
+```{r aparch spec}
+aparch_model
+```
+
+
+aparch 1,1
+ma1 significant
+delta is our power (assymetirc power arch) modeling std dev
+
+
+ok na mean.model
+we fail to reject that there is no auto correlation in lag1,2,3,4
+
+
+
+ljung box test
+has problem on lag1 and lag 2, there is autocorrelation on squared residuals
+lag4 is not the case
+we model the std dev here
+====================================
+arch lm test 
+there are no arch effects hence we fail to reject 
+====================================
+stabiility is we have lot of unstable 
+if its unstable it means that there is shocks can impact by shocks or susceptible to shocks 
+
+
+
+====================================
+
+
+sgarch 
+
+
+check video
+
+
+
+
+
+
+
+
+===============
+tgarch
+
+if your residual is less than 0 rreplace it w dummy
+if <= 0 it will zero out
+
+
+## TGARCH - The Threshold GARCH (TGARCH) model introduces a threshold parameter that captures the effect of positive and negative shocks differently.
+
+```{r}
+tgarch_spec <- ugarchspec(
+  variance.model = list(model = "fGARCH",  # Flexible GARCH model (includes TGARCH)
+                        submodel = "TGARCH",  # Specify TGARCH
+                        garchOrder = c(1, 1)),  # GARCH(1,1)
+  mean.model = list(armaOrder = c(0, 4), 
+                    include.mean = TRUE), 
+  fixed.pars = list(ma2 = 0, ma3 = 0),  # MA(0,4) with only ma1 and ma4
+  distribution.model = "std"  # Standardized t-distribution
+)
+
+tgarch_model <- ugarchfit(spec = tgarch_spec, data = arma_04_model$residuals)
+summary(tgarch_model)
+```
+
+
+change the mean.model into a 01 since we have ma1 as a good significant
+ma4 not significant
+oimega and akpha not significant no contrribution of residual squard to volatility 
+beta is positive so negative has more effect than a positive shock
+=========================================
+aikaike of sgarch
+
+we can compare the akaike of s garch and t garch 
+if we compare t garch is better and e garch we cant compare with t garch
+
+alpha is not significant because marginal contribution of residual squared (autocorlleation on residual squared)
+========================
+
+arch effects good since there is no arch effects
+===========
+stablity is not stable overall
+
+mu is ook at all levls
+
+
+============
+sign bias not enough to capture sign bias of positive and negative 
+
+
+
+===================
+
+this is not correct and disregard
+
+models =  list (gjrmodel egarch, and aparch, tgarch)
+
+this just collects the AIC
+
+==================================================================================================================
+==================================================================================================================
+==================================================================================================================
+END
+access the recordings on the gdrive 
+
+
+Output:
+(1) the paper is arch garch, compare tig isang company on each industry sector compare the arima, garch (multiple garchs), 5 companies for diff companies. the interpretation is important
+1998 for listed companies choose existing companies, check listed in PSEi as a first critier, financial ,minign, utilities, service, food 
+
+
+
+(2) next is panel data
+
+
+
+
+
+Next:
+mutlivariate acc bcc
+
+
+Next:
+then panel regresssion
+
+Next:
+make up class multivariate analysis
+
+
+
+==================================================================================================================
+==================================================================================================================
+
+--------------------------- NEXT SESSION --------------------------------
+
+
+-- DISCUSSED FINAL PAPER
+
+"
+indiv arima, indiv garch, multinvaritate garch dcc and ecc garch (COMPARE IF THEY ARE MOVING TOGETHER, IF EACH ONE OF THEM AFFECT EACH OTHER) PICK ONE EITHER CCC GARCH OR ECC GARCH 
+
+get stock that has volatility clustering
+
+ICT + MAC
+
+USE CLOSING PRICE
+
+JUST REPLACE THE CODE AND ADD UR INPUTS
+"
+
+
+
+
+GJR GARCH ONLY GETS NEGATIVE SHOCKS (USES THEORY THAT NEGATIVE SHOCKS HAVE LARGER EFFECT VS POSITIVE )
+
+
+
+ARCH AND GARCH IS NOT ABLE TO CAPTURE LONG MEMORY
+
+
+
+
+
+-------------------------------------------------------------------------
+
+
+
+## Introduction to ARCH/GARCH Models
+
+
+
+The development of ARCH (Autoregressive Conditional Heteroskedasticity) and GARCH (Generalized ARCH) models was driven by the need to address limitations in traditional time series models, particularly ARIMA (Autoregressive Integrated Moving Average), in capturing volatility patterns in financial data.
+
+
+
+Limitations of ARIMA Models:
+
+
+
+ARIMA models are adept at modeling the mean of time series data but assume constant variance (homoskedasticity). This assumption is often violated in financial time series, where volatility tends to cluster — that is, periods of high volatility are followed by high volatility, and periods of low volatility follow low volatility. ARIMA models fail to account for this heteroskedasticity, leading to inefficient estimates and inaccurate forecasts.
+
+
+
+Introduction of ARCH Models:
+
+
+
+
+
+In 1982, Robert F. Engle introduced the ARCH model to address this st errors, effectively capturing volatility clustering observed in financial data. This innovation enabled more accurate modeling of time-varying volatility. 
+
+
+
+Advancement to GARCH Models:
+
+
+
+Building on Engle's work, Tim Bollerslev introduced the GARCH model in 1986. The GARCH model generalizes the ARCH model by incorporating lagged values of both squared residuals and past variances, providing a more parsimonious and flexible framework for modeling volatility. This advancement allowed for more efficient estimation and better forecasting of financial time series. 
+
+
+
+The evolution from ARIMA to ARCH and GARCH models represents a significant advancement in time series analysis, particularly in finance, by effectively modeling and forecasting time-varying volatility.
+
+
+
+ARCH (Autoregressive Conditional Heteroskedasticity) and GARCH (Generalized ARCH) models are used to model time series data with volatility clustering.
+
+
+
+
+
+ARCH Model: Models conditional variance based on previous squared residuals, addressing heteroskedasticity by adding more structure to the error variance.
+
+
+
+$$
+
+\begin{aligned}
+
+&\textbf{1. Autoregressive Conditional Heteroskedasticity (ARCH) Model} \\
+
+&\sigma_t^2 = \alpha_0 + \sum_{i=1}^{q} \alpha_i \epsilon_{t-i}^2 \\
+
+&\text{where:} \\
+
+&\sigma_t^2 \text{ is the conditional variance at time } t, \\
+
+&\alpha_0 \text{ is a constant term,} \\
+
+&\alpha_i \text{ are coefficients for the lagged squared residuals,} \\
+
+&\epsilon_{t-i} \text{ are the lagged residuals (errors),} \\
+
+&q \text{ is the order of the ARCH model.}
+
+\end{aligned}
+
+$$
+
+
+
+
+
+GARCH Model: Extends ARCH by including lagged values of both returns and variances, capturing longer memory in volatility.
+
+
+
+$$
+
+\begin{aligned}
+
+&\textbf{2. Generalized Autoregressive Conditional Heteroskedasticity (GARCH) Model} \\
+
+&\sigma_t^2 = \alpha_0 + \sum_{i=1}^{q} \alpha_i \epsilon_{t-i}^2 + \sum_{j=1}^{p} \beta_j \sigma_{t-j}^2 \\
+
+&\text{where:} \\
+
+&\sigma_t^2 \text{ is the conditional variance at time } t, \\
+
+&\alpha_0 \text{ is a constant term,} \\
+
+&\alpha_i \text{ are coefficients for the lagged squared residuals,} \\
+
+&\epsilon_{t-i} \text{ are the lagged residuals (errors),} \\
+
+&\beta_j \text{ are coefficients for the lagged conditional variances,} \\
+
+&\sigma_{t-j}^2 \text{ are the lagged conditional variances,} \\
+
+&p \text{ and } q \text{ are the orders of the GARCH model.}
+
+\end{aligned}
+
+$$
+
+
+
+
+
+ARCH (Autoregressive Conditional Heteroskedasticity) and GARCH (Generalized ARCH) models are widely used for modeling time-varying volatility in financial time series. However, they have several limitations:
+
+
+
+1) Symmetry Assumption: Standard ARCH and GARCH models assume that positive and negative shocks have identical effects on volatility. This symmetry fails to capture the "leverage effect," where negative shocks often increase volatility more than positive ones. 
+
+
+
+2) Distributional Assumptions: These models typically assume normally distributed errors. Financial returns often exhibit heavy tails and excess kurtosis, leading to inaccurate volatility estimates under this assumption. 
+
+
+
+3) Parameter Estimation Challenges: Determining the appropriate number of lags (p and q) in ARCH and GARCH models can be complex and is often done in an ad hoc manner, potentially affecting model accuracy.
+
+
+
+4) Inability to Capture Long Memory: Standard ARCH and GARCH models may not effectively capture long-term dependencies in volatility, which are present in some financial time series. 
+
+
+
+5) Sensitivity to Model Specification: These models are sensitive to the correct specification of the conditional distribution. Incorrect assumptions can lead to misleading inferences about volatility dynamics. 
+
+
+
+6) Computational Complexity: Higher-order ARCH models can become computationally intensive due to the large number of parameters, making them less practical for large datasets. 
+
+
+
+To address these limitations, extensions such as EGARCH, GJR-GARCH, and models incorporating heavy-tailed distributions have been developed, offering more flexibility in modeling complex volatility structures.
+
+
+
+
+
+
+
+Asymmetric GARCH models: These include asymmetric or leverage effects, and  accounts for shocks that impact volatility differently depending on the direction (positive or negative). Asymmetric GARCH models are designed to capture the differing impacts of positive and negative shocks on volatility, addressing the leverage effect observed in financial time series. Notable asymmetric GARCH models include:
+
+
+
+## GARCH models available in rugarch package
+
+Summary of the GARCH Models in rugarch:
+
+sGARCH: Basic GARCH model.
+
+eGARCH: Exponential GARCH, allows for asymmetric effects in volatility.
+
+gjrGARCH: GJR-GARCH, models asymmetric effects by adding leverage effects.
+
+iGARCH: Integrated GARCH, with the constraint 𝛼+𝛽=1, used for persistent volatility.
+
+apARCH: Asymmetric Power ARCH, generalizes GARCH with power transformations.
+
+fGARCH: Fractionally Integrated GARCH, for long-memory processes.
+
+nGARCH: Non-linear GARCH, introduces non-linear effects.
+
+
+
+
+
+
+
+vGARCH: Time-varying GARCH model, with dynamic parameters.
+
+GARCH-M: GARCH-in-Mean, models the relationship between volatility and the mean return.
+
+HARCH: Heterogeneous ARCH, with volatility influenced by various past periods.
+
+NIG-GARCH: GARCH with Normal Inverse Gaussian distribution for heavy-tailed data.
+
+
+
+
+
+## GARCH models available in rugarch package
+Summary of the GARCH Models in rugarch:
+sGARCH: Basic GARCH model.
+eGARCH: Exponential GARCH, allows for asymmetric effects in volatility.
+gjrGARCH: GJR-GARCH, models asymmetric effects by adding leverage effects.
+iGARCH: Integrated GARCH, with the constraint 𝛼+𝛽=1, used for persistent volatility.
+apARCH: Asymmetric Power ARCH, generalizes GARCH with power transformations.
+fGARCH: Fractionally Integrated GARCH, for long-memory processes.
+nGARCH: Non-linear GARCH, introduces non-linear effects.
+vGARCH: Time-varying GARCH model, with dynamic parameters.
+GARCH-M: GARCH-in-Mean, models the relationship between volatility and the mean return.
+HARCH: Heterogeneous ARCH, with volatility influenced by various past periods.
+NIG-GARCH: GARCH with Normal Inverse Gaussian distribution for heavy-tailed data.
+
+
+=================================================
+
+
+NOTES; INTEGRATED GARCH ALLOWS LONG TERM IF ALPHA AND BETA IS EQUAL TO 1
+
+
+
+=================================================
+START 
+
+GARCH IN MEAN
+>variant of s garch models sigma squared (vol) 
+>
+
+
+
+
+
+
+
+if epsilon sub t -i is 1 then change to zero (positive no effect, negative has impact)
+negative nes diminishes the volatility 
+if positive gamma (negative news) it will increase volatility 
+if gamma is negative it diminishes volatility (positive news)
+additive alpha and gamma
+
+
+
+=================================================
+exponential garch 
+models log volatility
+
+sqrt(2/pi) = 0.7978846
+
+gamma will tell the effect of positive news and negative news
+
+=================================================
+
+
+
+
+
+
+
+Asymmetric Component GARCH (ACGARCH): This model decomposes volatility into permanent and transitory components, allowing for asymmetric effects in each component to better capture the persistence and asymmetry in volatility.
+
+Smooth Transition GARCH (STGARCH): STGARCH models allow for smooth transitions between different regimes of volatility, capturing gradual changes and asymmetries in volatility dynamics.
+
+These models enhance the standard GARCH framework by incorporating mechanisms to model the asymmetric behavior of volatility in response to different types of shocks, providing a more accurate representation of financial time series data.
+
+## Other GARCH Models
+In addition to the standard and asymmetric GARCH models, there are other variants of GARCH models designed to capture different characteristics of time series data.
+### Integrated GARCH (IGARCH) Model
+The Integrated GARCH (IGARCH) model is a special case of the GARCH model where the persistence of shocks is permanent. This means that the effect of a shock does not decay over time.
+
+$$
+\begin{aligned}
+&\textbf{Integrated GARCH (IGARCH) Model} \\
+&\sigma_t^2 = \alpha_0 + \sum_{i=1}^p \alpha_i \epsilon_{t-i}^2 + \sum_{j=1}^q \beta_j \sigma_{t-j}^2, \quad \text{with } \sum_{i=1}^p \alpha_i + \sum_{j=1}^q \beta_j = 1 \\
+&\text{where:} \\
+&\sigma_t^2 \text{ is the conditional variance at time } t, \\
+&\alpha_0 \text{ is a constant term,} \\
+&\alpha_i \text{ are the coefficients of the past squared residuals (ARCH terms),} \\
+&\beta_j \text{ are the coefficients of the past variances (GARCH terms),} \\
+&\sum_{i=1}^p \alpha_i + \sum_{j=1}^q \beta_j = 1 \text{ indicates that the impact of shocks is permanent.}
+\end{aligned}
+$$
+
+
+
+
+
+
+=====================================================
+ARIMA
+
+Outline for ARIMA-GARCH Process
+## Step 1. Data Preparation and Transformation 
+
+1A) Load and inspect the data: 
+Import the time series data and inspect it for any missing values or anomalies.
+
+1B) Plot the data: Visualize the time series data to understand its structure and identify any obvious trends or seasonality.
+
+## Step 2. ARIMA Model Identification
+
+2A) Check for stationarity: Use the Augmented Dickey-Fuller (ADF) test to check if the series is stationary. If not, difference the series.
+
+2B) Determine the order of differencing: Use the ADF test on differenced series until it becomes stationary.
+
+2C) Plot ACF and PACF: Use these plots to identify the potential orders of the ARIMA model (p, d, q).
+
+## Step 3. Fit the ARIMA Model
+
+3A) Select and fit the ARIMA model: Based on ACF and PACF plots, fit an ARIMA model to the data.
+
+3B) Check model diagnostics: Analyze the residuals of the fitted ARIMA model to ensure they resemble white noise.
+
+## Step 4. Residual Analysis
+## Step 4. Residual Analysis
+
+4A) Plot ACF and PACF of residuals: Check the ACF and PACF of the residuals to ensure no significant autocorrelation remains.
+
+4B) Conduct Ljung-Box test: Perform the Ljung-Box test on the residuals to confirm the absence of autocorrelation.
+
+## Step 5. Fit the GARCH Model
+
+5A) Identify the need for GARCH: If the residuals exhibit heteroscedasticity (changing variance over time), proceed with GARCH modeling.
+
+5B) Fit various GARCH models: Fit different GARCH models (e.g., GARCH(1,1), EGARCH, TGARCH) to the ARIMA residuals.
+
+5C) Compare GARCH models: Compare the models based on AIC, BIC, and residual diagnostics to choose the best one.
+
+## Step 6. Final Model and Forecasting
+
+6A) Combine ARIMA and GARCH models: Use the best-fitting ARIMA-GARCH model for analysis and forecasting.
+
+6B) Forecast future values: Generate forecasts and include confidence intervals.
+
+6C) Plot and interpret the forecasts: Visualize the forecasts and interpret the results.
+
+================================================
+
+
+NOTE:
+WE CANNOT USE GET SYMBOLS SINCE ITS NOT YAHOO
+SAVE DATA IN EXCEL USE THE DATES PROPERLY 
+CONVERT INTO XTS
+CHECK FOR STATIONALITY
+NA DIF LOG (MODEL ASSET PRICE)
+CHECK STATISTICALLY USING AUGMENT FULLER TEST APSS TEST IF RETURNS ARE STATIONARY
+PLOT ACF AND PCF TO CHECK AUTOCORRELATION
+
+MODEL BUILDING UISE AUTO. ARIMA
+THEN CHECK COEFF TEST 
+SINCE AUTO.ARIMA USES AIC AND BIC USE IT TO COMPARE
+
+CHECK IF SIGNIFICANT VIA COEFF TEST AND USE IT AS THE MODEL
+STILL CHECK RESIDUALS AND ARCH EFFECTS (MOST PROHBABILY IT WILL HAVE ARCH EFFECTS WHICH WIL TELL US TO USE GARCH)
+
+
+OBJECTIVE IS FOR US TO MODEL RETURNS (ARIMA) AND VOLATILITY (GARCH)
+
+
+
+
+==========================================================
+
+START HERE ON PAPER
+
+Step 1: Data Preparation
+
+```{r}
+# Load necessary packages
+pacman::p_load(quantmod, rugarch, tseries, forecast, PerformanceAnalytics, tsm)
+```
+
+
+```{r}
+# Load the data
+getSymbols("AAPL", from = "1998-01-01", to = "2023-12-31")
+aapl <- Cl(AAPL)
+```
+
+```{r}
+# Plot the data
+plot(aapl, main = "AAPL Closing Prices", 
+     ylab = "Price", xlab = "Date")
+```
+
+```{r}
+# Get the log returns of the data
+aapl_ret <- na.omit(diff(log(aapl)))
+```
+
+CHECK PC (OR PHONE) RECORDING 
+
+Step 2: ARIMA Model Identification
+```{r}
+# Plot the returns data
+plot(aapl_ret)
+
+# Check for stationarity
+adf.test(aapl_ret) # H0: TS is not stationary
+kpss.test(aapl_ret, null = "Level") # H0: TS is level stationary
+```
+
+
+```{r}
+# Plot ACF and PACF
+par(mfrow = c(1, 2))
+Acf(aapl_ret, main = "ACF of Differenced Data")
+Pacf(aapl_ret, main = "PACF of Differenced Data")
+```
+Step 3: Fit the ARIMA Model
+```{r}
+# Fit ARIMA model
+arima_aapl <- auto.arima(aapl_ret, trace = T)
+summary(arima_aapl)
+```
+
+## ARIMA Model Equation for auto.arima Results
+The ARIMA model fitted to the series `aapl_ret` has the following specification:
+
+$$
+\begin{aligned}
+    y_t &= \mu + \phi_1 y_{t-1} + \phi_2 y_{t-2} + \phi_3 y_{t-3} + \theta_1 \epsilon_{t-1} + \epsilon_t \\
+    &= 0.0011 - 0.5588 y_{t-1} - 0.0206 y_{t-2} - 0.0160 y_{t-3} + 0.5127 \epsilon_{t-1} + \epsilon_t
+\end{aligned}
+$$
+
+
+```{r}
+# Plot residuals
+checkresiduals(arima_aapl)
+```
+
+
+
+
+
+Step 4: Residual Analysis
+```{r}
+# ACF and PACF of residuals
+par(mfrow = c(1, 2))
+Acf(arima_aapl$residuals, main = "ACF of ARIMA Residuals")
+Pacf(arima_aapl$residuals, main = "PACF of ARIMA Residuals")
+
+
+# Ljung-Box test
+Box.test(arima_aapl$residuals, type = "Ljung-Box") #H0: No autocorrelation in the residuals 
+```
+Null Hypothesis (H₀): The residuals are independently distributed (i.e., no autocorrelation).
+Alternative Hypothesis (H₁): The residuals are not independently distributed (i.e., exhibit autocorrelation).
+
+## Check if parameters of arima_aapl are significant
+```{r}
+coeftest(arima_aapl)
+```
+
+```{r}
+arma_11_model <- Arima(aapl_ret, order = c(1,0,1))
+summary(arma_11_model)
+coeftest(arma_11_model)
+```
+
+## Trying another auto.arima model
+
+```{r}
+fit_arima_aapl <- auto.arima(aapl_ret, 
+                             seasonal = FALSE, 
+                             stepwise = FALSE, 
+                             approximation = FALSE)
+summary(fit_arima_aapl)
+
+
+
+
+
+
+
+coeftest(fit_arima_aapl)
+```
+
+
+```{r}
+arma_04_model <- Arima(aapl_ret, 
+               order = c(0, 0, 4),  # AR(0), differencing=0, MA(4)
+               fixed = c(NA, 0, 0, NA, NA))  # include the mean at the end
+# Print model summary
+summary(arma_04_model)
+coeftest(arma_04_model)
+```
+```{r}
+AIC(arma_11_model)
+AIC(arma_04_model)
+BIC(arma_11_model)
+BIC(arma_04_model)
+```
+## ARMA(0,4) is the better model based on AIC
+
+# CHeck auto-correlation
+```{r}
+# Perform the Ljung-Box test on the residuals
+resid <- residuals(arma_04_model)
+Box.test(resid, lag = 10, type = "Ljung-Box") #H0: No autocorrelation in the residuals 
+```
+
+
+```{r}
+# Plot residuals
+checkresiduals(arma_04_model)
+```
+
+```{r}
+aapl_arch_test <- FinTS::ArchTest(residuals(arma_04_model), lags = 12) # H0: No ARCH effects
+aapl_arch_test
+```
+
+
+Step 5: Fit the GARCH Model
+
+
+
+```{r}
+# Specify GARCH model
+garch_spec_std <- ugarchspec(
+  mean.model = list(
+    armaOrder = c(0, 4),      # ARIMA(0,4) -> No AR terms, 4 MA terms
+    include.mean = TRUE,      # Explicitly include the mean (intercept mu) in the model
+    fixed.pars = list(ma2 = 0, ma3 = 0)),    # Fix ma2 and ma3 to 0
+  variance.model = list(
+    model = "sGARCH",               # GARCH model for volatility
+    garchOrder = c(1, 1)),          # GARCH(1,1) model for conditional variance
+  distribution.model = "std"        # Use the Student-t distribution for errors
+)
+
+# Fit GARCH model
+garch_model_std <- ugarchfit(spec = garch_spec_std, data = arma_04_model$residuals)
+garch_model_std
+```
+
+
+Step 5b: Fit the GARCH Model
+```{r}
+# Specify GARCH model
+garch_spec_std_11 <- ugarchspec(
+  mean.model = list(
+    armaOrder = c(1, 1),      # ARIMA(0,4) -> No AR terms, 4 MA terms
+    include.mean = TRUE),      # Explicitly include the mean (intercept mu) in the model
+  variance.model = list(
+    model = "sGARCH",               # GARCH model for volatility
+    garchOrder = c(1, 1)),          # GARCH(1,1) model for conditional variance
+  distribution.model = "std"        # Use the Student-t distribution for errors
+)
+
+# Fit GARCH model
+garch_model_std_11 <- ugarchfit(spec = garch_spec_std, data = arma_11_model$residuals)
+garch_model_std_11
+```
+
+
+APARCH
+
+
+
