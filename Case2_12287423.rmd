@@ -1,0 +1,442 @@
+---
+title: "case2"
+author: "Richard Gan"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: '5'
+  word_document:
+    toc: true
+    toc_depth: 5
+  html_document:
+    fig_caption: true
+    highlight: tango
+    toc: true
+    toc_float: true
+    theme: journal
+    toc_depth: 5
+    number_sections: true
+---
+
+```{r setup, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+require(tufte)
+require(knitr)
+require(tinytex)
+```
+
+# High-level Process and Notes
+Introduction -> Background -> Load two (2) stocks data -> Log diff -> Stationary test -> ARIMA model fit -> ARIMA model analysis -> GARCH model fit -> SGARCH NORM, SGARCH SSTD, TGARCH, EGARCH, GJRGARCH -> GARCH Analysis and Comparison -> APARCH Model fit -> Conclusion
+Notes:
+1. P-value analysis is done on each tests (if applicable). 
+2. Model is compared using AIC (less better) and Log likelihood (higher better). 
+3. Interpretation is provided as comments on last line for each code chunk.
+4. Due to the nature of the stock (appears stationary) MAC log diff was not used and price is used instead for model. This is to provide further analysis since Log Returns model generates ARIMA(0,0,0). 
+5. For GARCH and APARCH models ICT stock was used and compared for better analysis.
+
+# Introduction
+Sector: Transportation Services
+Companies: MacroAsia Corporation (PSE:MAC) and International Container Terminal Services, Inc. (PSE:ICT)
+
+# MAC Background 
+MacroAsia Corporation (MAC), through its subsidiaries and associates, is engaged in aviation-support businesses at the Ninoy Aquino International Airport (NAIA), Manila Domestic Airport, Mactan-Cebu International Airport, Kalibo International Airport, Davao International Airport, and the General Aviation Areas. The group provides aircraft maintenance, repairs and overhaul services, in-flight catering services, airport ground handling services, charter flight services, and operates a special economic zone at the NAIA. 
+NOTE: MAC stock has been in 3-5 PHP Range since 2007. Hence, SARIMA modeling (Stationary ARIMA) might be more suitable rather than ARIMA. 
+
+# ICT Background 
+International Container Terminal Services, Inc. (ICT) was incorporated on December 24, 1987 to operate, manage and develop the Manila International Container Terminal (MICT), which handles international container cargo at the Port of Manila. ICT provide ancillary services such as storage, container stripping and stuffing, inspection, weighing and services for refrigerated containers or reefers, as well as roll-on/roll-off and anchorage services to non-containerized cargoes or general cargoes on a limited basis.
+
+
+```{r Packages}
+pacman::p_load(tseries,quantmod,forecast,timeSeries,FinTS,rugarch,dplyr,PerformanceAnalytics,readxl,xts,tsm,remotes,fpp3, ggplot2, urca, plotly, ggfortify)
+remotes::install_github("KevinKotze/tsm")
+```
+# PART 1: Data Preparation
+```{r MacroAsia Data}
+# Load MacroAsia 
+mdata <- read_excel('MAC.xlsx', sheet = 'Sheet 1')
+
+# XTS Conversion
+mdata <- data.frame(date = as.Date(mdata$date), value = mdata$close)
+mdata <- xts(mdata$value, order.by = mdata$date)
+mdata <- na.omit(mdata)
+plot(mdata, main = 'MacroAsia Price')
+```
+
+```{r ICT Data}
+idata <- read_excel('ICT.xlsx', sheet = 'Sheet 1')
+
+# XTS Conversion
+idata <- data.frame(date = as.Date(idata$date), value = idata$close)
+idata <- xts(idata$value, order.by = idata$date)
+plot(idata, main = 'ICT Price')
+```
+
+```{r MAC log returns, volatility clustering}
+mdata_ret <- na.omit(diff(log(mdata)))
+plot(mdata_ret,main = 'MacroAsia Log returns')
+# volatility clustering around 2017 and 2020 hence ARIMA not sufficient model
+```
+
+
+```{r ICT log returns, volatility clustering}
+idata_ret <- na.omit(diff(log(idata)))
+plot(idata_ret, main = 'ICT Log returns')
+# volatility clustering around 2008 and 2020 
+```
+
+# PART 2: ARIMA Model Identification
+```{r MAC stationarity test}
+adf.test(mdata_ret) # H0: TS is not stationary
+# Hypothesis testing = Fail to Reject Null hypothesis | Data is not stationary
+
+kpss.test(mdata_ret, null = "Level") # H0: TS is level stationary
+# Hypothesis testing = Reject Null hypothesis | Data is stationary
+```
+
+```{r ICT stationary test}
+adf.test(idata_ret) # H0: TS is not stationary
+# Fail to REJECT NUll Hypothesis | Data is stationary
+
+kpss.test(idata_ret, null = "Level") # TS is level stationary
+# Reject null hypothesis as data is not level stationary
+```
+
+```{r MAC ACF and PCF}
+par(mfrow = c(1,2))
+Acf(mdata_ret, main = "MAC ACF of Differenced Data")
+Pacf(mdata_ret, main = "MAC PACF of Differenced Data")
+# There is significant spikes at different lags exceeding the bands and slight decay
+# Significant spikes indicates it is not white noise. Meaning it will become ARIMA(0,0,0) and we cannot use ARIMA  to model
+```
+```{r ICT ACF and PCF}
+par(mfrow = c(1,2))
+Acf(idata_ret, main = 'ICT ACF of Differenced Data')
+Pacf(idata_ret, main = 'ICT PACF of Differenced Data')
+# Significant spikes to the bands are observed around 0 to 5 Lag
+# Significant spikes indicates it is not white noise. Meaning it will become ARIMA(0,0,0) and we cannot use ARIMA  to model
+```
+# PART 3: ARIMA Model
+```{r MAC ARIMA Model}
+mac_arima_model<- auto.arima(mdata, trace = T)
+summary(mac_arima_model)
+# Price is used for ARIMA model for this case, since Log Returns gets ARIMA (0,0,0) model
+# ARIMA Model(2,1,2) = AR(2), Differencing = 1, MA(2)
+mac_arima_model
+```
+
+```{r ICT ARIMA Model}
+ict_arima_model<- auto.arima(idata_ret, trace = T)
+summary(ict_arima_model)
+# ARIMA(2,0,1) with non-zero mean  = AR(2), Differencing = 0, MA(1)
+ict_arima_model
+```
+
+# PART 4: Residual Analysis
+```{r MAC Residuals}
+par(mfrow = c(1,2))
+Acf(mac_arima_model$residuals, main = "MAC ACF of ARIMA Residuals")
+Pacf(mac_arima_model$residuals, main = "MAC PACF of ARIMA Residuals")
+# Significant spikes indicates it is not white noise. Meaning it will become ARIMA(0,0,0) and we cannot use ARIMA  to model
+```
+```{r ICT Residuals}
+par(mfrow = c(1,2))
+Acf(ict_arima_model$residuals, main = "ICT ACF of ARIMA Residuals")
+Pacf(ict_arima_model$residuals, main = "ICT PACF of ARIMA Residuals")
+# Significant spikes indicates it is not white noise. Meaning it will become ARIMA(0,0,0) and we cannot use ARIMA  to model
+```
+
+```{r MAC Box and coef test}
+# MAC Box Test
+Box.test(mac_arima_model$residuals, type = "Ljung-Box") # H0 : No autocorrelation in the residuals
+# Reject Null Hypothesis : There is no autocorrelation in the residuals
+
+# MAC Coeftest
+lmtest::coeftest(mac_arima_model)
+# AR2 and MA2 are significant in our ARIMA(2,1,2) Model
+```
+```{r ICT Box and coef test}
+# ICT Box Test
+Box.test(ict_arima_model$residuals, type = "Ljung-Box") # H0 : No autocorrelation in the residuals
+# Reject Null Hypothesis : There is no autocorrelation in the residuals 
+
+# ICT Coeftest
+lmtest::coeftest(ict_arima_model)
+# AR2 and MA2 are significant in our ARIMA(2,0,1) Model
+```
+
+```{r MAC check significant}
+mac_arima_model2 <- Arima(mdata, order = c(
+  1,0,1 #2,1,2
+  )) # AR(1) and MA(1) components are significant
+summary(mac_arima_model2)
+lmtest::coeftest(mac_arima_model2)
+```
+```{r ICT check significant}
+ict_arima_model2 <- Arima(idata, order = c(1,0,1)) # AR(1) and MA(1) components are significant
+summary(ict_arima_model2)
+lmtest::coeftest(ict_arima_model2)
+```
+```{r MAC check residuals}
+forecast::checkresiduals(mac_arima_model)
+```
+
+```{r ICT check residuals}
+forecast::checkresiduals(ict_arima_model)
+```
+```{r}
+lmtest::coeftest(mac_arima_model)
+```
+
+
+```{r MAC AIC and BIC} 
+# Lower AIC = Better
+AIC(mac_arima_model) # Better Model per AIC
+AIC(mac_arima_model2)
+BIC(mac_arima_model)
+BIC(mac_arima_model2)
+```
+```{r ICT AIC and BIC}
+# Lower AIC = Better
+AIC(ict_arima_model) # Better Model per AIC
+AIC(ict_arima_model2)
+BIC(ict_arima_model)
+BIC(ict_arima_model2)
+```
+
+```{r MAC ArchTest}
+mac_arima_model_test <- FinTS::ArchTest(residuals(mac_arima_model), lags = 12) # H0: No ARCH effects
+mac_arima_model_test 
+# Fail to Reject Null Hypothesis | There is Arch effects hence MAC ARIMA Model is insufficient
+# At Lag 36 we Reject Null
+```
+
+```{r ICT ArchTest}
+ict_arima_model_test <- FinTS::ArchTest(residuals(ict_arima_model), lags = 12) # H0: No ARCH effects
+ict_arima_model_test
+# Reject Null Hypothesis | There is Arch effects hence ICT ARIMA Model is insufficient
+# All Lags have ARCH effects
+```
+
+```{r Final ARIMA Model}
+mac_arima_model # ARIMA(2,1,2) # Invalid model due to differencing factor
+ict_arima_model2 # ARIMA(1,0,1) # Not used since higher AIC and BIC
+ict_arima_model # ARIMA(2,0,1) Model used as Final model, AR2 component significant, MA component not significant
+print('best model: ARIMA(2,0,1)')
+```
+
+======================================================
+
+# PART 5 : GARCH Model
+```{r ICT sGARCH nd}
+ict_garch_spec_nd <- ugarchspec(
+  mean.model = list(
+     armaOrder = c(2,1)                     # 2 AR terms, 1 MA term | Adjusted for ARMA(2,0,1) 
+    ,include.mean = TRUE                    # explicitly include mean (mu)
+    ,fixed.pars = list(ma2 = 0, ma3 = 0))   # Fix ma2 and ma3 to 0
+  ,variance.model = list(
+     model = "sGARCH"                       # GARCH model for volatility
+    ,garchOrder = c(1, 1))                  # GARCH(1,1) model for conditional variance
+  ,distribution.model = "norm"              # sGARCH Normal Distribution
+)
+ict_garch_model_nd <- ugarchfit(spec = ict_garch_spec_nd
+                             ,data = ict_arima_model$residuals
+                             )
+ict_garch_model_nd
+show(ict_garch_spec_nd)
+coef(ict_garch_model_nd)
+
+# Ljung-Box Test indicates model is not fit and there is autocorrelation 
+# Squared residuals shows no autocorrelation
+# There is no ARCH effects on residuals
+# Joint statistic infers that our parameters are jointly unstable and individually the results are mixed and sensitive to changes
+# Pearson Goodness-of-Fit infers model is not fit
+# Sign bias shows the model is not able to capture positive and negative shocks
+# Negative shocks vs positive shocks | Model appears to have a slight bias towards positive 
+```
+
+```{r MAC sGARCH nd}
+mac_garch_spec_nd <- ugarchspec(
+  mean.model = list(
+     armaOrder = c(2,2)                     # 2 AR terms, 2 MA term | Adjusted for ARMA(2,1,2) 
+    ,include.mean = TRUE                    # explicitly include mean (mu)
+    ,fixed.pars = list(ma2 = 0, ma3 = 0))   # Fix ma2 and ma3 to 0
+  ,variance.model = list(
+     model = "sGARCH"                       # GARCH model for volatility
+    ,garchOrder = c(1, 1))                  # GARCH(1,1) model for conditional variance
+  ,distribution.model = "norm"              # sGARCH Normal Distribution
+)
+mac_garch_model_nd <- ugarchfit(spec = mac_garch_spec_nd
+                             ,data = mac_arima_model$residuals
+                             )
+mac_garch_model_nd
+show(mac_garch_spec_nd)
+coef(mac_garch_model_nd)
+
+# Ljung-Box Test indicates model is  fit and there is no autocorrelation 
+# Squared residuals shows no autocorrelation
+# There is no ARCH effects on residuals
+# Joint statistic infers that our parameters are jointly stable and individually the results are mostly stable
+# Pearson Goodness-of-Fit infers model is not fit
+# There is no sign bias 
+```
+
+```{r sGARCH sstd}
+ict_garch_spec_std <- ugarchspec(
+  mean.model = list(
+     armaOrder = c(2,1)                     # 2 AR terms, 1 MA term | Adjusted for ARMA(2,0,1) 
+    ,include.mean = TRUE                    # explicitly include mean (mu)
+    ,fixed.pars = list(ma2 = 0, ma3 = 0))   # Fix ma2 and ma3 to 0
+  ,variance.model = list(
+     model = "sGARCH"                       # GARCH model for volatility
+    ,garchOrder = c(1, 1))                  # GARCH(1,1) model for conditional variance
+  ,distribution.model = "std"              # sGARCH Student's T Distribution
+)
+ict_garch_model_std <- ugarchfit(spec = ict_garch_spec_std
+                             ,data = ict_arima_model$residuals
+                             )
+ict_garch_model_std
+show(ict_garch_spec_std)
+coef(ict_garch_model_std)
+
+# Higher Log likelihood = Better
+# Lower AIC = Better
+# Both models (norm vs std) show preferable results
+```
+
+```{r GJR-GARCH}
+ict_gjrgarch_spec_std <- ugarchspec(
+  mean.model = list(
+     armaOrder = c(2,1)                     # 2 AR terms, 1 MA term | Adjusted for ARMA(2,0,1) 
+    ,include.mean = TRUE                    
+    ,fixed.pars = list(ma2 = 0, ma3 = 0))   
+  ,variance.model = list(
+     model = "gjrGARCH"                     # GJR GARCH model 
+    ,garchOrder = c(1, 1))                
+  ,distribution.model = "std"             
+)
+ict_gjrgarch_model_std <- ugarchfit(spec = ict_gjrgarch_spec_std
+                             ,data = ict_arima_model$residuals
+)
+ict_gjrgarch_model_std
+show(ict_gjrgarch_spec_std)
+coef(ict_gjrgarch_model_std)
+# Higher Log likelihood and AIC shows little change from sGARCH model
+```
+
+```{r eGARCH}
+# Exponential GARCH
+ict_egarch_spec <- ugarchspec(variance.model = list(model = "eGARCH", garchOrder = c(1, 1)),
+                          mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
+                          distribution.model = "std")
+ict_egarch_model <- ugarchfit(spec = ict_egarch_spec, data = ict_arima_model$residuals)
+ict_egarch_model
+#show(ict_egarch_model)
+# No material difference from previous sGARCH models
+```
+
+```{r TGARCH}
+# Fit TGARCH model for comparison
+ict_tgarch_spec <- ugarchspec(variance.model = list(model = "fGARCH", submodel = "TGARCH", garchOrder = c(1, 1)),
+                          mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
+                          distribution.model = "norm")
+ict_tgarch_model <- ugarchfit(spec = ict_tgarch_spec, data = ict_arima_model$residuals)
+ict_tgarch_model
+# Log likelihood went down and AIC as well. Therefore, not much significant improvement from previous sGARCH models
+```
+
+# PART 6 : APARCH
+```{r APARCH}
+ict_aparch_spec <- ugarchspec(
+  variance.model = list(model = "apARCH",  # APARCH model
+                        garchOrder = c(1, 1)),  # GARCH(1,1)
+  mean.model = list(armaOrder = c(2, 1), 
+                    include.mean = TRUE), 
+  fixed.pars = list(ma2 = 0, ma3 = 0),  # MA(0,4) with only ma1 and ma4
+  distribution.model = "std"  # Standardized t-distribution
+)
+
+ict_aparch_model <- ugarchfit(spec = ict_aparch_spec, data = ict_arima_model$residuals)
+ict_aparch_model
+# There is no material difference in AIC from the previous sGARCH,TGARCH,eGARCH Models. Log likehihood was accounted but not strictly measured for GARCH models
+```
+
+# PART 7: Conclusion
+MAC is not a viable ARIMA model as the data is stationary (5PHP since 2007) and there is no clear trend. This was confirmed when auto.arima best model geenrates only ARIMA(0,0,0) simply after sometime the model will forecast 0. This was not viable for further analysis so for MAC the price was used to model rather than log returns. This generated in auto.arima a model with a differencing factor ARIMA(2,1,2). However this model was not used for modeling GARCH and APARCH. Mainly because of the (1) differencing fator in the model ARIMA(2,1,2) and that the stock is stationary and lacks volatility, assuming. 
+
+ICT was a viable and good model. ICT was used to model ARIMA(2,0,1) and modeled volatility using GARCH and compared several GARCH models such as different distributions (std and norm) and panel data modeling via APARCH and compared with the previous GARCH models. 
+
+The results for the other GARCH was not material and sGARCH can be used to model the volatility sufficiently. AIC (lower better) was used to compare the models.
+
+
+# PART 8: Model Equation
+```{r Final Models}
+ict_arima_model # Final ARIMA
+# AR(1) coefficient: 0.5075
+# AR(2) coefficient: -0.0221
+# MA(1) coefficient: -0.5596
+# Mean term: 6×10^-4
+```
+
+Final ARIMA(2,0,1) model equation
+$$
+\begin{equation}
+X_t = 6 \times 10^{-4} + 0.5075X_{t-1} - 0.0221X_{t-2} - 0.5596\varepsilon_{t-1} + \varepsilon_t
+\end{equation}
+$$
+Final GARCH Model equation
+$$
+\begin{equation}
+X_t = -2.46 \times 10^{-4} + 0.699996X_{t-1} + 0.012324X_{t-2} - 0.742878\varepsilon_{t-1} + \varepsilon_t
+\end{equation}
+$$
+```{r GARCH Parameters used above}
+GARCH_OBJECT <- ict_garch_model_std
+# GARCH OPTIMAL PARAMETERS
+# mu(-0.000246)
+# ar1(0.699)
+# ar2(0.0123)
+# ma1(-0.742)
+
+# ict_garch_model_std # FINAL SGARCH SSTD MODEL BASED ON AIC AND LOG LIKELIHOOD 
+# Significant parameters (p < 0.001):
+# ar1: 0.699996 (p = 0.000015)
+# ma1: -0.742878 (p = 0.000004)
+
+# Non-significant parameters:
+# mu (mean): -0.000246 (p = 0.262133)
+# ar2: 0.012324 (p = 0.527241)
+```
+
+
+# PART 9 APPENDIX: MULTIVARIATE GARCH
+
+```{r}
+library(zoo)
+residuals_1 <- ict_arima_model$residuals
+residuals_2 <- ict_arima_model2$residuals
+
+# Combine into a multivariate matrix
+residuals_matrix <- cbind(residuals_1, residuals_2)
+
+residuals_matrix <- apply(residuals_matrix, 2, function(x) na.locf(x, na.rm = FALSE))
+residuals_matrix <- na.omit(residuals_matrix)
+dim(residuals_matrix) # shape of matrix n>2
+any(is.na(residuals_matrix))  # FALSE
+```
+
+```{r DCC-GARCH}
+library(rmgarch) # install.packages('rmgarch')
+data_m <- residuals_matrix
+spec <-  ugarchspec(variance.model = list(model = "sGARCH"), 
+                  mean.model = list(armaOrder = c(0,0)))
+dcc.spec <-  dccspec(uspec = multispec(replicate(2, spec)), 
+                   dccOrder = c(1,1), model = "DCC")
+dcc.fit <-  dccfit(dcc.spec, data = data_m)
+show(dcc.fit)
+```
+```{r BEKK-GARCH invalid}
+bekk_spec <- gogarchspec(mean.model = list(model = "constant"), 
+                         variance.model = list(model = "BEKK"))
+#bekk_fit <- gogarchfit(bekk_spec, data = data_m)
+```
+
